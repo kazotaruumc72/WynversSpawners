@@ -55,9 +55,7 @@ public class SpawnerConfig {
     private SpawnerData parseSpawner(String id, ConfigurationSection section) {
         String materialName = section.getString("material", "SPAWNER");
         Material material = Material.matchMaterial(materialName);
-        if (material == null) {
-            throw new IllegalArgumentException("Invalid material: " + materialName);
-        }
+        if (material == null) throw new IllegalArgumentException("Invalid material: " + materialName);
 
         String rawDisplayName = section.getString("display-name", id);
         String displayName = ChatColor.translateAlternateColorCodes('&', rawDisplayName);
@@ -81,27 +79,25 @@ public class SpawnerConfig {
             }
         }
 
-        int delay = section.getInt("delay", 200);
-        int minSpawnDelay = section.getInt("min-spawn-delay", 100);
-        int maxSpawnDelay = section.getInt("max-spawn-delay", 400);
-        int spawnCount = section.getInt("spawn-count", 1);
-        int spawnRange = section.getInt("spawn-range", 4);
-        int requiredPlayerRange = section.getInt("required-player-range", 16);
-        
-        // Nouveaux paramètres pour MythicMobs
-        int minRadius = section.getInt("min-radius", 0);
-        int maxRadius = section.getInt("max-radius", 0);
-        int minAmount = section.getInt("min-amount", 0);
-        int maxAmount = section.getInt("max-amount", 0);
+        int delay              = section.getInt("delay", 200);
+        int spawnCount         = section.getInt("spawn-count", 1);
+        int spawnRange         = section.getInt("spawn-range", 4);
+        int requiredPlayerRange= section.getInt("required-player-range", 16);
+        int minRadius          = section.getInt("min-radius", 0);
+        int maxRadius          = section.getInt("max-radius", 0);
+        int minAmount          = section.getInt("min-amount", 0);
+        int maxAmount          = section.getInt("max-amount", 0);
 
         return new SpawnerData(id, material, displayName, lore, entityType, mythicMobType,
-                delay, minSpawnDelay, maxSpawnDelay, spawnCount, spawnRange, requiredPlayerRange,
+                delay, spawnCount, spawnRange, requiredPlayerRange,
                 minRadius, maxRadius, minAmount, maxAmount);
     }
 
-    public SpawnerData getSpawner(String id) {
-        return spawners.get(id);
+    public void saveField(FileConfiguration config, String spawnerId, String field, int value) {
+        config.set("spawners." + spawnerId + "." + field, value);
     }
+
+    public SpawnerData getSpawner(String id) { return spawners.get(id); }
 
     public Map<String, SpawnerData> getAllSpawners() {
         return Collections.unmodifiableMap(spawners);

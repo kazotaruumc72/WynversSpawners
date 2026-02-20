@@ -12,20 +12,18 @@ public class SpawnerData {
     private final List<String> lore;
     private final EntityType entityType;
     private final String mythicMobType;
-    private final int delay;
-    private final int minSpawnDelay;
-    private final int maxSpawnDelay;
-    private final int spawnCount;
-    private final int spawnRange;
-    private final int requiredPlayerRange;
-    private final int minRadius;
-    private final int maxRadius;
-    private final int minAmount;
-    private final int maxAmount;
+    private int delay;
+    private int spawnCount;
+    private int spawnRange;
+    private int requiredPlayerRange;
+    private int minRadius;
+    private int maxRadius;
+    private int minAmount;
+    private int maxAmount;
 
     public SpawnerData(String id, Material material, String displayName, List<String> lore,
-                       EntityType entityType, String mythicMobType, int delay, int minSpawnDelay,
-                       int maxSpawnDelay, int spawnCount, int spawnRange, int requiredPlayerRange,
+                       EntityType entityType, String mythicMobType, int delay,
+                       int spawnCount, int spawnRange, int requiredPlayerRange,
                        int minRadius, int maxRadius, int minAmount, int maxAmount) {
         this.id = id;
         this.material = material;
@@ -34,8 +32,6 @@ public class SpawnerData {
         this.entityType = entityType;
         this.mythicMobType = mythicMobType;
         this.delay = delay;
-        this.minSpawnDelay = minSpawnDelay;
-        this.maxSpawnDelay = maxSpawnDelay;
         this.spawnCount = spawnCount;
         this.spawnRange = spawnRange;
         this.requiredPlayerRange = requiredPlayerRange;
@@ -45,71 +41,35 @@ public class SpawnerData {
         this.maxAmount = maxAmount;
     }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
+    public Material getMaterial() { return material; }
+    public String getDisplayName() { return displayName; }
+    public List<String> getLore() { return lore; }
+    public EntityType getEntityType() { return entityType; }
+    public boolean isMythicMob() { return mythicMobType != null; }
+    public String getMythicMobType() { return mythicMobType; }
 
-    public Material getMaterial() {
-        return material;
-    }
+    public int getDelay() { return delay; }
+    public void setDelay(int delay) { this.delay = delay; }
 
-    public String getDisplayName() {
-        return displayName;
-    }
+    public int getSpawnCount() { return spawnCount; }
+    public void setSpawnCount(int spawnCount) { this.spawnCount = spawnCount; }
 
-    public List<String> getLore() {
-        return lore;
-    }
+    public int getSpawnRange() { return spawnRange; }
+    public void setSpawnRange(int spawnRange) { this.spawnRange = spawnRange; }
 
-    public EntityType getEntityType() {
-        return entityType;
-    }
+    public int getRequiredPlayerRange() { return requiredPlayerRange; }
+    public void setRequiredPlayerRange(int requiredPlayerRange) { this.requiredPlayerRange = requiredPlayerRange; }
 
-    public boolean isMythicMob() {
-        return mythicMobType != null;
-    }
+    public int getMinRadius() { return minRadius; }
+    public void setMinRadius(int minRadius) { this.minRadius = minRadius; }
 
-    public String getMythicMobType() {
-        return mythicMobType;
-    }
+    public int getMaxRadius() { return maxRadius; }
+    public void setMaxRadius(int maxRadius) { this.maxRadius = maxRadius; }
 
-    public int getDelay() {
-        return delay;
-    }
+    public int getMinAmount() { return minAmount; }
+    public void setMinAmount(int minAmount) { this.minAmount = minAmount; }
 
-    public int getMinSpawnDelay() {
-        return minSpawnDelay;
-    }
-
-    public int getMaxSpawnDelay() {
-        return maxSpawnDelay;
-    }
-
-    public int getSpawnCount() {
-        return spawnCount;
-    }
-
-    public int getSpawnRange() {
-        return spawnRange;
-    }
-
-    public int getRequiredPlayerRange() {
-        return requiredPlayerRange;
-    }
-
-    public int getMinRadius() {
-        return minRadius;
-    }
-
-    public int getMaxRadius() {
-        return maxRadius;
-    }
-
-    public int getMinAmount() {
-        return minAmount;
-    }
-
-    public int getMaxAmount() {
-        return maxAmount;
-    }
+    public int getMaxAmount() { return maxAmount; }
+    public void setMaxAmount(int maxAmount) { this.maxAmount = maxAmount; }
 }

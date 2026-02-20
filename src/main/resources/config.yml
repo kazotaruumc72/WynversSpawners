@@ -4,53 +4,61 @@ spawners:
     display-name: "&6Spawner de Golem de Fer"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaître des Golems de Fer"
+      - "&7faire appara\u00eetre des Golems de Fer"
     entity-type: IRON_GOLEM
     delay: 200
-    min-spawn-delay: 100
-    max-spawn-delay: 400
     spawn-count: 1
     spawn-range: 4
     required-player-range: 16
+    min-radius: 0
+    max-radius: 0
+    min-amount: 1
+    max-amount: 1
 
   zombie_spawner:
     material: SPAWNER
     display-name: "&cSpawner de Zombie"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaître des Zombies"
+      - "&7faire appara\u00eetre des Zombies"
     entity-type: ZOMBIE
     delay: 200
-    min-spawn-delay: 100
-    max-spawn-delay: 400
     spawn-count: 2
     spawn-range: 4
     required-player-range: 16
+    min-radius: 0
+    max-radius: 0
+    min-amount: 1
+    max-amount: 1
 
   skeleton_spawner:
     material: SPAWNER
     display-name: "&fSpawner de Squelette"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaître des Squelettes"
+      - "&7faire appara\u00eetre des Squelettes"
     entity-type: SKELETON
     delay: 200
-    min-spawn-delay: 100
-    max-spawn-delay: 400
     spawn-count: 2
     spawn-range: 4
     required-player-range: 16
+    min-radius: 0
+    max-radius: 0
+    min-amount: 1
+    max-amount: 1
 
   elephant_spawner:
     material: SPAWNER
-    display-name: "&6Spawner de éléphant"
+    display-name: "&6Spawner de \u00e9l\u00e9phant"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaître des éléphants"
+      - "&7faire appara\u00eetre des \u00e9l\u00e9phants"
     entity-type: "mm:elephant"
     delay: 200
-    min-spawn-delay: 100
-    max-spawn-delay: 400
     spawn-count: 1
     spawn-range: 4
     required-player-range: 16
+    min-radius: 1
+    max-radius: 5
+    min-amount: 1
+    max-amount: 3
