@@ -25,13 +25,19 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
 
     private static final double BLOCK_CENTER_OFFSET = 0.5;
+    private final Random random = new Random();
 
     private SpawnerConfig spawnerConfig;
     private NamespacedKey mythicMobTypeKey;
+    private NamespacedKey minRadiusKey;
+    private NamespacedKey maxRadiusKey;
+    private NamespacedKey minAmountKey;
+    private NamespacedKey maxAmountKey;
     private boolean mythicMobsEnabled = false;
 
     @Override
@@ -39,6 +45,11 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         saveDefaultConfig();
 
         mythicMobTypeKey = new NamespacedKey(this, "mythic_mob_type");
+        minRadiusKey = new NamespacedKey(this, "min_radius");
+        maxRadiusKey = new NamespacedKey(this, "max_radius");
+        minAmountKey = new NamespacedKey(this, "min_amount");
+        maxAmountKey = new NamespacedKey(this, "max_amount");
+        
         spawnerConfig = new SpawnerConfig(getLogger());
         spawnerConfig.loadSpawners(getConfig());
 
@@ -190,10 +201,30 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                     spawner.setSpawnCount(data.getSpawnCount());
                     spawner.setSpawnRange(data.getSpawnRange());
                     spawner.setRequiredPlayerRange(data.getRequiredPlayerRange());
+                    
                     if (data.isMythicMob()) {
                         spawner.getPersistentDataContainer().set(
                                 mythicMobTypeKey, PersistentDataType.STRING, data.getMythicMobType());
                     }
+                    
+                    // Store custom spawn parameters
+                    if (data.getMinRadius() > 0) {
+                        spawner.getPersistentDataContainer().set(
+                                minRadiusKey, PersistentDataType.INTEGER, data.getMinRadius());
+                    }
+                    if (data.getMaxRadius() > 0) {
+                        spawner.getPersistentDataContainer().set(
+                                maxRadiusKey, PersistentDataType.INTEGER, data.getMaxRadius());
+                    }
+                    if (data.getMinAmount() > 0) {
+                        spawner.getPersistentDataContainer().set(
+                                minAmountKey, PersistentDataType.INTEGER, data.getMinAmount());
+                    }
+                    if (data.getMaxAmount() > 0) {
+                        spawner.getPersistentDataContainer().set(
+                                maxAmountKey, PersistentDataType.INTEGER, data.getMaxAmount());
+                    }
+                    
                     blockMeta.setBlockState(spawner);
                 }
             }
@@ -230,12 +261,43 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                     placedSpawner.setSpawnCount(itemSpawner.getSpawnCount());
                     placedSpawner.setSpawnRange(itemSpawner.getSpawnRange());
                     placedSpawner.setRequiredPlayerRange(itemSpawner.getRequiredPlayerRange());
+                    
+                    // Copy all persistent data
                     String mmType = itemSpawner.getPersistentDataContainer()
                             .get(mythicMobTypeKey, PersistentDataType.STRING);
                     if (mmType != null) {
                         placedSpawner.getPersistentDataContainer().set(
                                 mythicMobTypeKey, PersistentDataType.STRING, mmType);
                     }
+                    
+                    Integer minRadius = itemSpawner.getPersistentDataContainer()
+                            .get(minRadiusKey, PersistentDataType.INTEGER);
+                    if (minRadius != null) {
+                        placedSpawner.getPersistentDataContainer().set(
+                                minRadiusKey, PersistentDataType.INTEGER, minRadius);
+                    }
+                    
+                    Integer maxRadius = itemSpawner.getPersistentDataContainer()
+                            .get(maxRadiusKey, PersistentDataType.INTEGER);
+                    if (maxRadius != null) {
+                        placedSpawner.getPersistentDataContainer().set(
+                                maxRadiusKey, PersistentDataType.INTEGER, maxRadius);
+                    }
+                    
+                    Integer minAmount = itemSpawner.getPersistentDataContainer()
+                            .get(minAmountKey, PersistentDataType.INTEGER);
+                    if (minAmount != null) {
+                        placedSpawner.getPersistentDataContainer().set(
+                                minAmountKey, PersistentDataType.INTEGER, minAmount);
+                    }
+                    
+                    Integer maxAmount = itemSpawner.getPersistentDataContainer()
+                            .get(maxAmountKey, PersistentDataType.INTEGER);
+                    if (maxAmount != null) {
+                        placedSpawner.getPersistentDataContainer().set(
+                                maxAmountKey, PersistentDataType.INTEGER, maxAmount);
+                    }
+                    
                     placedSpawner.update();
                 }
             }
@@ -260,13 +322,52 @@ public class WynversSpawners extends JavaPlugin implements Listener {
             return;
         }
         
-        // Annuler le spawn vanilla et spawner le MythicMob à la place
+        // Annuler le spawn vanilla et spawner le(s) MythicMob(s) à la place
         event.setCancelled(true);
-        try {
-            io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
-                    .spawnMob(mmType, spawner.getLocation().add(BLOCK_CENTER_OFFSET, 0, BLOCK_CENTER_OFFSET));
-        } catch (Exception e) {
-            getLogger().warning("Failed to spawn MythicMobs mob '" + mmType + "': " + e.getMessage());
+        
+        // Récupérer les paramètres de spawn
+        Integer minRadius = spawner.getPersistentDataContainer().get(minRadiusKey, PersistentDataType.INTEGER);
+        Integer maxRadius = spawner.getPersistentDataContainer().get(maxRadiusKey, PersistentDataType.INTEGER);
+        Integer minAmount = spawner.getPersistentDataContainer().get(minAmountKey, PersistentDataType.INTEGER);
+        Integer maxAmount = spawner.getPersistentDataContainer().get(maxAmountKey, PersistentDataType.INTEGER);
+        
+        // Valeurs par défaut
+        int actualMinRadius = (minRadius != null && minRadius > 0) ? minRadius : 0;
+        int actualMaxRadius = (maxRadius != null && maxRadius > 0) ? maxRadius : 0;
+        int actualMinAmount = (minAmount != null && minAmount > 0) ? minAmount : 1;
+        int actualMaxAmount = (maxAmount != null && maxAmount > 0) ? maxAmount : 1;
+        
+        // Calculer le nombre de mobs à spawner
+        int spawnAmount = actualMinAmount;
+        if (actualMaxAmount > actualMinAmount) {
+            spawnAmount = actualMinAmount + random.nextInt(actualMaxAmount - actualMinAmount + 1);
+        }
+        
+        // Spawner les mobs
+        for (int i = 0; i < spawnAmount; i++) {
+            try {
+                double offsetX = BLOCK_CENTER_OFFSET;
+                double offsetZ = BLOCK_CENTER_OFFSET;
+                
+                // Calculer un offset aléatoire si un radius est défini
+                if (actualMaxRadius > 0) {
+                    int radius = actualMinRadius;
+                    if (actualMaxRadius > actualMinRadius) {
+                        radius = actualMinRadius + random.nextInt(actualMaxRadius - actualMinRadius + 1);
+                    }
+                    
+                    // Générer un point aléatoire dans le cercle de rayon spécifié
+                    double angle = random.nextDouble() * 2 * Math.PI;
+                    double distance = Math.sqrt(random.nextDouble()) * radius;
+                    offsetX = BLOCK_CENTER_OFFSET + (Math.cos(angle) * distance);
+                    offsetZ = BLOCK_CENTER_OFFSET + (Math.sin(angle) * distance);
+                }
+                
+                io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
+                        .spawnMob(mmType, spawner.getLocation().add(offsetX, 0, offsetZ));
+            } catch (Exception e) {
+                getLogger().warning("Failed to spawn MythicMobs mob '" + mmType + "': " + e.getMessage());
+            }
         }
     }
 }
