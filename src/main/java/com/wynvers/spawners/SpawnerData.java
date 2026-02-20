@@ -11,6 +11,7 @@ public class SpawnerData {
     private final String displayName;
     private final List<String> lore;
     private final EntityType entityType;
+    private final String mythicMobType;
     private final int delay;
     private final int minSpawnDelay;
     private final int maxSpawnDelay;
@@ -19,13 +20,14 @@ public class SpawnerData {
     private final int requiredPlayerRange;
 
     public SpawnerData(String id, Material material, String displayName, List<String> lore,
-                       EntityType entityType, int delay, int minSpawnDelay, int maxSpawnDelay,
-                       int spawnCount, int spawnRange, int requiredPlayerRange) {
+                       EntityType entityType, String mythicMobType, int delay, int minSpawnDelay,
+                       int maxSpawnDelay, int spawnCount, int spawnRange, int requiredPlayerRange) {
         this.id = id;
         this.material = material;
         this.displayName = displayName;
         this.lore = lore;
         this.entityType = entityType;
+        this.mythicMobType = mythicMobType;
         this.delay = delay;
         this.minSpawnDelay = minSpawnDelay;
         this.maxSpawnDelay = maxSpawnDelay;
@@ -52,6 +54,14 @@ public class SpawnerData {
 
     public EntityType getEntityType() {
         return entityType;
+    }
+
+    public boolean isMythicMob() {
+        return mythicMobType != null;
+    }
+
+    public String getMythicMobType() {
+        return mythicMobType;
     }
 
     public int getDelay() {

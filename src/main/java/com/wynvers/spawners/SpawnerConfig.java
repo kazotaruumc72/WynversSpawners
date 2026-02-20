@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 
 public class SpawnerConfig {
 
+    private static final String MYTHIC_MOBS_PREFIX = "mm:";
+
     private final Map<String, SpawnerData> spawners = new HashMap<>();
     private final Logger logger;
 
@@ -66,11 +68,17 @@ public class SpawnerConfig {
                 .collect(Collectors.toList());
 
         String entityTypeName = section.getString("entity-type", "PIG");
+        String mythicMobType = null;
         EntityType entityType;
-        try {
-            entityType = EntityType.valueOf(entityTypeName.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid entity-type: " + entityTypeName);
+        if (entityTypeName.toLowerCase().startsWith(MYTHIC_MOBS_PREFIX)) {
+            mythicMobType = entityTypeName.substring(MYTHIC_MOBS_PREFIX.length());
+            entityType = EntityType.PIG;
+        } else {
+            try {
+                entityType = EntityType.valueOf(entityTypeName.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid entity-type: " + entityTypeName);
+            }
         }
 
         int delay = section.getInt("delay", 200);
@@ -80,7 +88,7 @@ public class SpawnerConfig {
         int spawnRange = section.getInt("spawn-range", 4);
         int requiredPlayerRange = section.getInt("required-player-range", 16);
 
-        return new SpawnerData(id, material, displayName, lore, entityType,
+        return new SpawnerData(id, material, displayName, lore, entityType, mythicMobType,
                 delay, minSpawnDelay, maxSpawnDelay, spawnCount, spawnRange, requiredPlayerRange);
     }
 

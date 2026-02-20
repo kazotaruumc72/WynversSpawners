@@ -3,6 +3,7 @@ package com.wynvers.spawners;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.command.Command;
@@ -11,9 +12,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
@@ -24,14 +27,24 @@ import java.util.Map;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
 
+    private static final double BLOCK_CENTER_OFFSET = 0.5;
+
     private SpawnerConfig spawnerConfig;
+    private NamespacedKey mythicMobTypeKey;
+    private boolean mythicMobsEnabled = false;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
+        mythicMobTypeKey = new NamespacedKey(this, "mythic_mob_type");
         spawnerConfig = new SpawnerConfig(getLogger());
         spawnerConfig.loadSpawners(getConfig());
+
+        mythicMobsEnabled = Bukkit.getPluginManager().getPlugin("MythicMobs") != null;
+        if (mythicMobsEnabled) {
+            getLogger().info("MythicMobs detected! Custom mob spawners enabled.");
+        }
 
         getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("WynversSpawners enabled!");
@@ -117,8 +130,12 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         }
         sender.sendMessage(ChatColor.GREEN + "Available spawners:");
         for (Map.Entry<String, SpawnerData> entry : all.entrySet()) {
+            SpawnerData data = entry.getValue();
+            String typeDisplay = data.isMythicMob()
+                    ? "mm:" + data.getMythicMobType()
+                    : data.getEntityType().name();
             sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + entry.getKey()
-                    + ChatColor.GRAY + " (" + entry.getValue().getEntityType().name() + ")");
+                    + ChatColor.GRAY + " (" + typeDisplay + ")");
         }
     }
 
@@ -172,6 +189,10 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                     spawner.setSpawnCount(data.getSpawnCount());
                     spawner.setSpawnRange(data.getSpawnRange());
                     spawner.setRequiredPlayerRange(data.getRequiredPlayerRange());
+                    if (data.isMythicMob()) {
+                        spawner.getPersistentDataContainer().set(
+                                mythicMobTypeKey, PersistentDataType.STRING, data.getMythicMobType());
+                    }
                     blockMeta.setBlockState(spawner);
                 }
             }
@@ -208,9 +229,36 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                     placedSpawner.setSpawnCount(itemSpawner.getSpawnCount());
                     placedSpawner.setSpawnRange(itemSpawner.getSpawnRange());
                     placedSpawner.setRequiredPlayerRange(itemSpawner.getRequiredPlayerRange());
+                    String mmType = itemSpawner.getPersistentDataContainer()
+                            .get(mythicMobTypeKey, PersistentDataType.STRING);
+                    if (mmType != null) {
+                        placedSpawner.getPersistentDataContainer().set(
+                                mythicMobTypeKey, PersistentDataType.STRING, mmType);
+                    }
                     placedSpawner.update();
                 }
             }
+        }
+    }
+
+    @EventHandler
+    public void onSpawnerSpawn(SpawnerSpawnEvent event) {
+        CreatureSpawner spawner = event.getSpawner();
+        String mmType = spawner.getPersistentDataContainer()
+                .get(mythicMobTypeKey, PersistentDataType.STRING);
+        if (mmType == null) {
+            return;
+        }
+        if (!mythicMobsEnabled) {
+            event.setCancelled(true);
+            return;
+        }
+        event.setCancelled(true);
+        try {
+            io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
+                    .spawnMob(mmType, spawner.getLocation().add(BLOCK_CENTER_OFFSET, 0, BLOCK_CENTER_OFFSET));
+        } catch (Exception e) {
+            getLogger().warning("Failed to spawn MythicMobs mob '" + mmType + "': " + e.getMessage());
         }
     }
 }
