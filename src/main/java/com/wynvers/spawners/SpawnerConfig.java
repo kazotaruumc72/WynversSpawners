@@ -87,9 +87,16 @@ public class SpawnerConfig {
         int spawnCount = section.getInt("spawn-count", 1);
         int spawnRange = section.getInt("spawn-range", 4);
         int requiredPlayerRange = section.getInt("required-player-range", 16);
+        
+        // Nouveaux paramètres pour MythicMobs
+        int minRadius = section.getInt("min-radius", 0);
+        int maxRadius = section.getInt("max-radius", 0);
+        int minAmount = section.getInt("min-amount", 0);
+        int maxAmount = section.getInt("max-amount", 0);
 
         return new SpawnerData(id, material, displayName, lore, entityType, mythicMobType,
-                delay, minSpawnDelay, maxSpawnDelay, spawnCount, spawnRange, requiredPlayerRange);
+                delay, minSpawnDelay, maxSpawnDelay, spawnCount, spawnRange, requiredPlayerRange,
+                minRadius, maxRadius, minAmount, maxAmount);
     }
 
     public SpawnerData getSpawner(String id) {
