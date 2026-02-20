@@ -4,7 +4,7 @@ spawners:
     display-name: "&6Spawner de Golem de Fer"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaitre des Golems de Fer"
+      - "&7faire apparaître des Golems de Fer"
     entity-type: IRON_GOLEM
     delay: 200
     min-spawn-delay: 100
@@ -18,7 +18,7 @@ spawners:
     display-name: "&cSpawner de Zombie"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaitre des Zombies"
+      - "&7faire apparaître des Zombies"
     entity-type: ZOMBIE
     delay: 200
     min-spawn-delay: 100
@@ -32,7 +32,7 @@ spawners:
     display-name: "&fSpawner de Squelette"
     lore:
       - "&7Place ce spawner pour"
-      - "&7faire apparaitre des Squelettes"
+      - "&7faire apparaître des Squelettes"
     entity-type: SKELETON
     delay: 200
     min-spawn-delay: 100
