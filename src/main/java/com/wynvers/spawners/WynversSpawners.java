@@ -155,7 +155,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     }
 
     // ---- Item creation ----
-    private ItemStack createSpawnerItem(SpawnerData data) {
+    public ItemStack createSpawnerItem(SpawnerData data) {
         ItemStack item = new ItemStack(data.getMaterial());
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -166,13 +166,11 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                 BlockState state = blockMeta.getBlockState();
                 if (state instanceof CreatureSpawner) {
                     CreatureSpawner spawner = (CreatureSpawner) state;
-                    // Afficher VILLAGER dans le spawner en main (mob neutre visible)
                     spawner.setSpawnedType(EntityType.VILLAGER);
                     spawner.setDelay(data.getDelay());
                     spawner.setMinSpawnDelay(data.getDelay());
                     spawner.setMaxSpawnDelay(data.getDelay());
                     spawner.setRequiredPlayerRange(data.getRequiredPlayerRange());
-                    // Stocker toutes les clés PDC
                     spawner.getPersistentDataContainer().set(spawnerIdKey, PersistentDataType.STRING, data.getId());
                     if (data.isMythicMob())
                         spawner.getPersistentDataContainer().set(mythicMobTypeKey, PersistentDataType.STRING, data.getMythicMobType());
@@ -203,7 +201,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         if (!(itemState instanceof CreatureSpawner)) return;
         CreatureSpawner itemSpawner = (CreatureSpawner) itemState;
 
-        // Vérifier que c'est un spawner WynversSpawners
         String spawnerId = itemSpawner.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
 
@@ -211,14 +208,12 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         if (!(placedState instanceof CreatureSpawner)) return;
         CreatureSpawner placedSpawner = (CreatureSpawner) placedState;
 
-        // Copier les propriétés vanilla
         placedSpawner.setSpawnedType(EntityType.VILLAGER);
         placedSpawner.setDelay(itemSpawner.getDelay());
         placedSpawner.setMinSpawnDelay(itemSpawner.getMinSpawnDelay());
         placedSpawner.setMaxSpawnDelay(itemSpawner.getMaxSpawnDelay());
         placedSpawner.setRequiredPlayerRange(itemSpawner.getRequiredPlayerRange());
 
-        // Copier toutes les clés PDC
         copyPDC(itemSpawner, placedSpawner, spawnerIdKey, PersistentDataType.STRING);
         copyPDC(itemSpawner, placedSpawner, mythicMobTypeKey, PersistentDataType.STRING);
         copyPDCInt(itemSpawner, placedSpawner, minRadiusKey);
@@ -227,7 +222,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         copyPDCInt(itemSpawner, placedSpawner, maxAmountKey);
         placedSpawner.update();
 
-        // Enregistrer dans le tick manager
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
         tickManager.register(event.getBlockPlaced().getLocation(), delay);
@@ -237,23 +231,47 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (block.getType() != Material.SPAWNER) return;
+
         BlockState state = block.getState();
         if (!(state instanceof CreatureSpawner)) return;
         CreatureSpawner cs = (CreatureSpawner) state;
+
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
+
+        // Désenregistrer du tick manager dans tous les cas
         tickManager.unregister(block.getLocation());
+
+        Player player = event.getPlayer();
+        if (!player.hasPermission("wspawner.admin")) return;
+
+        // Récupérer le SpawnerData pour recréer l'item exact
+        SpawnerData data = spawnerConfig.getSpawner(spawnerId);
+        if (data == null) return;
+
+        // Empêcher le drop vanilla et les XP
+        event.setDropItems(false);
+        event.setExpToDrop(0);
+
+        // Donner l'item dans l'inventaire (ou dropper au sol si plein)
+        ItemStack spawnerItem = createSpawnerItem(data);
+        Map<Integer, ItemStack> overflow = player.getInventory().addItem(spawnerItem);
+        if (!overflow.isEmpty()) {
+            block.getWorld().dropItemNaturally(block.getLocation(), spawnerItem);
+        }
+
+        player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
+                + "Spawner " + ChatColor.YELLOW + data.getDisplayName()
+                + ChatColor.WHITE + " récupéré !");
     }
 
-    /** Bloquer complètement le spawn vanilla pour nos spawners (le scheduler custom prend le relais) */
+    /** Annuler le spawn vanilla pour nos spawners */
     @EventHandler
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {
         CreatureSpawner cs = event.getSpawner();
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
-        // Annuler le spawn vanilla : notre scheduler s'en occupe
         event.setCancelled(true);
-        // Si le spawner vient d'être posé mais pas encore enregistré (ex: serveur restart)
         if (!tickManager.isRegistered(cs.getLocation())) {
             SpawnerData data = spawnerConfig.getSpawner(spawnerId);
             int delay = data != null ? data.getDelay() : cs.getDelay();
