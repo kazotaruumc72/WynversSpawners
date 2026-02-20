@@ -39,8 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
 
-    // ID bStats — remplace par ton vrai ID une fois le plugin enregistré sur https://bstats.org
-    private static final int BSTATS_PLUGIN_ID = 99999;
+    private static final int BSTATS_PLUGIN_ID = 29665;
 
     private SpawnerConfig spawnerConfig;
     private SpawnerEditorMenu editorMenu;
@@ -86,7 +85,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
 
         tickManager.start();
 
-        // --- bStats ---
         initBStats();
 
         getLogger().info("WynversSpawners enabled!");
@@ -95,19 +93,10 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     private void initBStats() {
         Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
 
-        // Chart 1 : nombre de spawners posés depuis le dernier redémarrage
-        metrics.addCustomChart(new SingleLineChart("spawners_placed", () -> {
-            int val = spawnersPlaced.getAndSet(0);
-            return val;
-        }));
+        metrics.addCustomChart(new SingleLineChart("spawners_placed", () -> spawnersPlaced.getAndSet(0)));
 
-        // Chart 2 : nombre de spawns MythicMobs depuis le dernier redémarrage
-        metrics.addCustomChart(new SingleLineChart("mythic_spawns", () -> {
-            int val = mythicSpawns.getAndSet(0);
-            return val;
-        }));
+        metrics.addCustomChart(new SingleLineChart("mythic_spawns", () -> mythicSpawns.getAndSet(0)));
 
-        // Chart 3 : répartition MythicMobs vs Vanilla
         metrics.addCustomChart(new SimplePie("spawn_type_ratio", () -> {
             int mythic  = mythicSpawns.get();
             int vanilla = vanillaSpawns.get();
@@ -115,17 +104,15 @@ public class WynversSpawners extends JavaPlugin implements Listener {
             return mythic >= vanilla ? "MythicMobs" : "Vanilla";
         }));
 
-        // Chart 4 : MythicMobs activé ou non
         metrics.addCustomChart(new SimplePie("mythicmobs_enabled",
                 () -> mythicMobsEnabled ? "Enabled" : "Disabled"));
 
-        // Chart 5 : nombre de types de spawners configurés
         metrics.addCustomChart(new SimplePie("configured_spawner_types", () -> {
             int count = spawnerConfig.getAllSpawners().size();
-            if (count == 0)      return "0";
-            else if (count <= 5) return "1-5";
+            if (count == 0)       return "0";
+            else if (count <= 5)  return "1-5";
             else if (count <= 15) return "6-15";
-            else                 return "16+";
+            else                  return "16+";
         }));
 
         getLogger().info("bStats Metrics initialized (ID: " + BSTATS_PLUGIN_ID + ")");
@@ -151,7 +138,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     public String getOpenEditorSpawnerId(UUID uuid)            { return openEditorSpawnerIds.get(uuid); }
     public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
 
-    /** Appelé par SpawnerTickManager pour incrémenter les compteurs bStats */
     public void trackMythicSpawn()  { mythicSpawns.incrementAndGet(); }
     public void trackVanillaSpawn() { vanillaSpawns.incrementAndGet(); }
 
@@ -285,7 +271,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
         tickManager.register(event.getBlockPlaced().getLocation(), delay);
 
-        // Compteur bStats
         spawnersPlaced.incrementAndGet();
     }
 
