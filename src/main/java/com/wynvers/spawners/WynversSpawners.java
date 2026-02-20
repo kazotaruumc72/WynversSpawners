@@ -118,7 +118,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         tickManager.stop();
-        getLogger().info("WynversSpawners disabled!");
+        getLogger().info("WSpawners disabled!");
     }
 
     // ---- Public accessors ----
@@ -192,7 +192,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     private void handleReload(CommandSender sender) {
         reloadConfig();
         spawnerConfig.loadSpawners(getConfig());
-        sender.sendMessage(ChatColor.GREEN + "WynversSpawners config reloaded!");
+        sender.sendMessage(ChatColor.GREEN + "WSpawners config reloaded!");
     }
 
     // ---- Item creation ----
@@ -282,7 +282,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         ItemStack spawnerItem = createSpawnerItem(data);
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(spawnerItem);
         if (!overflow.isEmpty()) block.getWorld().dropItemNaturally(block.getLocation(), spawnerItem);
-        player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
+        player.sendMessage(ChatColor.GREEN + "[WSpawners] " + ChatColor.WHITE
                 + "Spawner " + ChatColor.YELLOW + data.getDisplayName()
                 + ChatColor.WHITE + " r\u00e9cup\u00e9r\u00e9 !");
     }
