@@ -159,7 +159,7 @@ public class SpawnerEditorMenu implements Listener {
             FileConfiguration config = plugin.getConfig();
             plugin.getSpawnerConfig().saveField(config, spawnerId, fieldKey, value);
             plugin.saveConfig();
-            player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
+            player.sendMessage(ChatColor.GREEN + "[WSpawners] " + ChatColor.WHITE
                     + label + ChatColor.GRAY + " mis à jour à " + ChatColor.YELLOW + value
                     + ChatColor.GRAY + " pour " + ChatColor.WHITE + spawnerId
                     + ChatColor.GRAY + " et sauvegardé dans config.yml.");
