@@ -40,3 +40,17 @@ spawners:
     spawn-count: 2
     spawn-range: 4
     required-player-range: 16
+
+  elephant_spawner:
+    material: SPAWNER
+    display-name: "&6Spawner de éléphant"
+    lore:
+      - "&7Place ce spawner pour"
+      - "&7faire apparaître des éléphants"
+    entity-type: "mm:elephant"
+    delay: 200
+    min-spawn-delay: 100
+    max-spawn-delay: 400
+    spawn-count: 1
+    spawn-range: 4
+    required-player-range: 16
