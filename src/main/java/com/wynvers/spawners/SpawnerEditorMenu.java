@@ -130,7 +130,7 @@ public class SpawnerEditorMenu implements Listener {
         String[] info = pendingEdits.remove(uuid);
 
         if (input.equalsIgnoreCase("annuler")) {
-            player.sendMessage(ChatColor.GRAY + "Modification annul\u00e9e.");
+            player.sendMessage(ChatColor.GRAY + "Modification annulée.");
             return;
         }
 
@@ -142,7 +142,7 @@ public class SpawnerEditorMenu implements Listener {
             return;
         }
         if (value < 0) {
-            player.sendMessage(ChatColor.RED + "La valeur doit \u00eatre \u00e9gale ou sup\u00e9rieure \u00e0 0.");
+            player.sendMessage(ChatColor.RED + "La valeur doit être égale ou supérieure à 0.");
             return;
         }
 
@@ -160,9 +160,9 @@ public class SpawnerEditorMenu implements Listener {
             plugin.getSpawnerConfig().saveField(config, spawnerId, fieldKey, value);
             plugin.saveConfig();
             player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
-                    + label + ChatColor.GRAY + " mis \u00e0 jour \u00e0 " + ChatColor.YELLOW + value
+                    + label + ChatColor.GRAY + " mis à jour à " + ChatColor.YELLOW + value
                     + ChatColor.GRAY + " pour " + ChatColor.WHITE + spawnerId
-                    + ChatColor.GRAY + " et sauvegard\u00e9 dans config.yml.");
+                    + ChatColor.GRAY + " et sauvegardé dans config.yml.");
             plugin.getEditorMenu().open(player, data);
             plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
         });
