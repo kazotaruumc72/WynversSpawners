@@ -156,17 +156,14 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                     spawner.setMinSpawnDelay(data.getDelay());
                     spawner.setMaxSpawnDelay(data.getDelay());
                     spawner.setRequiredPlayerRange(data.getRequiredPlayerRange());
+                    // Toujours stocker toutes les clés PDC, même si valeur = 0
                     spawner.getPersistentDataContainer().set(spawnerIdKey, PersistentDataType.STRING, data.getId());
                     if (data.isMythicMob())
                         spawner.getPersistentDataContainer().set(mythicMobTypeKey, PersistentDataType.STRING, data.getMythicMobType());
-                    if (data.getMinRadius() > 0)
-                        spawner.getPersistentDataContainer().set(minRadiusKey, PersistentDataType.INTEGER, data.getMinRadius());
-                    if (data.getMaxRadius() > 0)
-                        spawner.getPersistentDataContainer().set(maxRadiusKey, PersistentDataType.INTEGER, data.getMaxRadius());
-                    if (data.getMinAmount() > 0)
-                        spawner.getPersistentDataContainer().set(minAmountKey, PersistentDataType.INTEGER, data.getMinAmount());
-                    if (data.getMaxAmount() > 0)
-                        spawner.getPersistentDataContainer().set(maxAmountKey, PersistentDataType.INTEGER, data.getMaxAmount());
+                    spawner.getPersistentDataContainer().set(minRadiusKey, PersistentDataType.INTEGER, data.getMinRadius());
+                    spawner.getPersistentDataContainer().set(maxRadiusKey, PersistentDataType.INTEGER, data.getMaxRadius());
+                    spawner.getPersistentDataContainer().set(minAmountKey, PersistentDataType.INTEGER, data.getMinAmount());
+                    spawner.getPersistentDataContainer().set(maxAmountKey, PersistentDataType.INTEGER, data.getMaxAmount());
                     blockMeta.setBlockState(spawner);
                 }
             }
@@ -234,17 +231,30 @@ public class WynversSpawners extends JavaPlugin implements Listener {
             return;
         }
         event.setCancelled(true);
-        Integer minRadius = spawner.getPersistentDataContainer().get(minRadiusKey, PersistentDataType.INTEGER);
-        Integer maxRadius = spawner.getPersistentDataContainer().get(maxRadiusKey, PersistentDataType.INTEGER);
-        Integer minAmount = spawner.getPersistentDataContainer().get(minAmountKey, PersistentDataType.INTEGER);
-        Integer maxAmount = spawner.getPersistentDataContainer().get(maxAmountKey, PersistentDataType.INTEGER);
-        int actualMinRadius = (minRadius != null && minRadius > 0) ? minRadius : 0;
-        int actualMaxRadius = (maxRadius != null && maxRadius > 0) ? maxRadius : 0;
-        int actualMinAmount = (minAmount != null && minAmount > 0) ? minAmount : 1;
-        int actualMaxAmount = (maxAmount != null && maxAmount > 0) ? maxAmount : 1;
+
+        // Lire depuis le PDC d'abord, sinon fallback sur SpawnerData en config
+        SpawnerData configData = null;
+        String spawnerId = spawner.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
+        if (spawnerId != null) configData = spawnerConfig.getSpawner(spawnerId);
+
+        Integer pdcMinRadius = spawner.getPersistentDataContainer().get(minRadiusKey, PersistentDataType.INTEGER);
+        Integer pdcMaxRadius = spawner.getPersistentDataContainer().get(maxRadiusKey, PersistentDataType.INTEGER);
+        Integer pdcMinAmount = spawner.getPersistentDataContainer().get(minAmountKey, PersistentDataType.INTEGER);
+        Integer pdcMaxAmount = spawner.getPersistentDataContainer().get(maxAmountKey, PersistentDataType.INTEGER);
+
+        int actualMinRadius = pdcMinRadius != null ? pdcMinRadius : (configData != null ? configData.getMinRadius() : 0);
+        int actualMaxRadius = pdcMaxRadius != null ? pdcMaxRadius : (configData != null ? configData.getMaxRadius() : 0);
+        int actualMinAmount = pdcMinAmount != null ? pdcMinAmount : (configData != null ? configData.getMinAmount() : 1);
+        int actualMaxAmount = pdcMaxAmount != null ? pdcMaxAmount : (configData != null ? configData.getMaxAmount() : 1);
+
+        // Sécurité : s'assurer que min <= max
+        if (actualMinAmount < 1) actualMinAmount = 1;
+        if (actualMaxAmount < actualMinAmount) actualMaxAmount = actualMinAmount;
+
         int spawnAmount = (actualMaxAmount > actualMinAmount)
                 ? actualMinAmount + random.nextInt(actualMaxAmount - actualMinAmount + 1)
                 : actualMinAmount;
+
         for (int i = 0; i < spawnAmount; i++) {
             try {
                 double offsetX = BLOCK_CENTER_OFFSET;
