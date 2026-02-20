@@ -16,6 +16,10 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
@@ -65,6 +69,44 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                 sender.sendMessage(ChatColor.RED + "Unknown sub-command: " + subCommand);
                 return true;
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!command.getName().equalsIgnoreCase("spawner")) {
+            return Collections.emptyList();
+        }
+
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            List<String> subCommands = Arrays.asList("give", "list", "reload");
+            String input = args[0].toLowerCase();
+            for (String sub : subCommands) {
+                if (sub.startsWith(input)) {
+                    completions.add(sub);
+                }
+            }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
+            String input = args[1].toLowerCase();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                String name = player.getName();
+                if (name.toLowerCase().startsWith(input)) {
+                    completions.add(name);
+                }
+            }
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
+            String input = args[2].toLowerCase();
+            for (String id : spawnerConfig.getAllSpawners().keySet()) {
+                String lowerid = id.toLowerCase();
+                if (lowerid.startsWith(input)) {
+                    completions.add(id);
+                }
+            }
+        }
+
+        Collections.sort(completions);
+        return completions;
     }
 
     private void handleList(CommandSender sender) {
