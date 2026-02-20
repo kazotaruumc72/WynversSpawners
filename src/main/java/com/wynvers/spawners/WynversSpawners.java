@@ -10,6 +10,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
@@ -241,18 +242,25 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOW)
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {
         CreatureSpawner spawner = event.getSpawner();
         String mmType = spawner.getPersistentDataContainer()
                 .get(mythicMobTypeKey, PersistentDataType.STRING);
-        if (mmType == null) {
+        
+        // Si pas de clé MythicMobs, laisser le spawn vanilla se produire normalement
+        if (mmType == null || mmType.isEmpty()) {
             return;
         }
+        
+        // Si c'est un spawner MythicMobs mais que le plugin n'est pas chargé, annuler
         if (!mythicMobsEnabled) {
             event.setCancelled(true);
+            getLogger().warning("Spawner with MythicMob type '" + mmType + "' attempted to spawn, but MythicMobs is not loaded!");
             return;
         }
+        
+        // Annuler le spawn vanilla et spawner le MythicMob à la place
         event.setCancelled(true);
         try {
             io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
