@@ -16,22 +16,15 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-/**
- * Manages the custom tick loop for all placed WynversSpawners.
- * Each registered spawner gets its own independent countdown.
- * Vanilla SpawnerSpawnEvent is completely bypassed.
- */
 public class SpawnerTickManager {
 
-    private static final int TICK_INTERVAL = 20; // check every second
+    private static final int TICK_INTERVAL = 20;
 
     private final WynversSpawners plugin;
     private final Random random = new Random();
 
-    // location key -> ticks remaining until next spawn
-    private final Map<String, Integer> countdowns = new HashMap<>();
-    // location key -> Location (for fast lookup)
-    private final Map<String, Location> locations = new HashMap<>();
+    private final Map<String, Integer>  countdowns = new HashMap<>();
+    private final Map<String, Location> locations  = new HashMap<>();
 
     private BukkitTask task;
 
@@ -49,14 +42,12 @@ public class SpawnerTickManager {
         locations.clear();
     }
 
-    /** Register a spawner block when it is placed. */
     public void register(Location loc, int delayTicks) {
         String key = locKey(loc);
         locations.put(key, loc.clone());
         countdowns.put(key, delayTicks > 0 ? delayTicks : 200);
     }
 
-    /** Unregister a spawner block when it is broken. */
     public void unregister(Location loc) {
         String key = locKey(loc);
         locations.remove(key);
@@ -79,41 +70,28 @@ public class SpawnerTickManager {
             if (world == null) continue;
 
             Block block = world.getBlockAt(loc);
-            if (block.getType() != org.bukkit.Material.SPAWNER) {
-                toRemove.add(key);
-                continue;
-            }
+            if (block.getType() != org.bukkit.Material.SPAWNER) { toRemove.add(key); continue; }
 
             BlockState state = block.getState();
             if (!(state instanceof CreatureSpawner)) { toRemove.add(key); continue; }
-
             CreatureSpawner cs = (CreatureSpawner) state;
 
-            // Check required player range (0 = ignore)
-            Integer pdcPlayerRange = cs.getPersistentDataContainer()
-                    .get(plugin.getSpawnerIdKey(), PersistentDataType.STRING) != null
-                    ? null : null; // resolved below via SpawnerData
             String spawnerId = cs.getPersistentDataContainer()
                     .get(plugin.getSpawnerIdKey(), PersistentDataType.STRING);
             SpawnerData data = spawnerId != null ? plugin.getSpawnerConfig().getSpawner(spawnerId) : null;
-            int playerRange = data != null ? data.getRequiredPlayerRange() : cs.getRequiredPlayerRange();
 
+            int playerRange = data != null ? data.getRequiredPlayerRange() : cs.getRequiredPlayerRange();
             if (playerRange > 0) {
                 boolean playerNearby = world.getPlayers().stream()
                         .anyMatch(p -> p.getLocation().distanceSquared(loc) <= (double) playerRange * playerRange);
-                if (!playerNearby) continue; // pause countdown, don't decrement
+                if (!playerNearby) continue;
             }
 
             int remaining = entry.getValue() - TICK_INTERVAL;
-            if (remaining > 0) {
-                entry.setValue(remaining);
-                continue;
-            }
+            if (remaining > 0) { entry.setValue(remaining); continue; }
 
-            // Time to spawn!
             spawnMobs(cs, loc, data);
 
-            // Reset countdown
             int delay = data != null ? data.getDelay() : cs.getDelay();
             if (delay <= 0) delay = 200;
             entry.setValue(delay);
@@ -126,7 +104,6 @@ public class SpawnerTickManager {
         String mmType = cs.getPersistentDataContainer()
                 .get(plugin.getMythicMobTypeKey(), PersistentDataType.STRING);
 
-        // Resolve amounts and radius (PDC first, then SpawnerData config)
         Integer pdcMinRadius = cs.getPersistentDataContainer().get(plugin.getMinRadiusKey(), PersistentDataType.INTEGER);
         Integer pdcMaxRadius = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(), PersistentDataType.INTEGER);
         Integer pdcMinAmount = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(), PersistentDataType.INTEGER);
@@ -151,13 +128,14 @@ public class SpawnerTickManager {
                 try {
                     io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
                             .spawnMob(mmType, spawnLoc);
+                    plugin.trackMythicSpawn();
                 } catch (Exception e) {
                     plugin.getLogger().warning("Failed to spawn MythicMob '" + mmType + "': " + e.getMessage());
                 }
             } else if (data != null && !data.isMythicMob()) {
-                // Vanilla mob fallback
                 try {
                     loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                    plugin.trackVanillaSpawn();
                 } catch (Exception e) {
                     plugin.getLogger().warning("Failed to spawn vanilla mob: " + e.getMessage());
                 }

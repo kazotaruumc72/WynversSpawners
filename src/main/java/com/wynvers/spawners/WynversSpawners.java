@@ -1,5 +1,8 @@
 package com.wynvers.spawners;
 
+import com.wynvers.spawners.libs.bstats.bukkit.Metrics;
+import com.wynvers.spawners.libs.bstats.charts.SimplePie;
+import com.wynvers.spawners.libs.bstats.charts.SingleLineChart;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -32,8 +35,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
+
+    // ID bStats — remplace par ton vrai ID une fois le plugin enregistré sur https://bstats.org
+    private static final int BSTATS_PLUGIN_ID = 99999;
 
     private SpawnerConfig spawnerConfig;
     private SpawnerEditorMenu editorMenu;
@@ -48,6 +55,11 @@ public class WynversSpawners extends JavaPlugin implements Listener {
 
     private boolean mythicMobsEnabled = false;
     private final Map<UUID, String> openEditorSpawnerIds = new HashMap<>();
+
+    // Compteurs bStats
+    private final AtomicInteger spawnersPlaced  = new AtomicInteger(0);
+    private final AtomicInteger mythicSpawns    = new AtomicInteger(0);
+    private final AtomicInteger vanillaSpawns   = new AtomicInteger(0);
 
     @Override
     public void onEnable() {
@@ -73,7 +85,50 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(editorMenu, this);
 
         tickManager.start();
+
+        // --- bStats ---
+        initBStats();
+
         getLogger().info("WynversSpawners enabled!");
+    }
+
+    private void initBStats() {
+        Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+
+        // Chart 1 : nombre de spawners posés depuis le dernier redémarrage
+        metrics.addCustomChart(new SingleLineChart("spawners_placed", () -> {
+            int val = spawnersPlaced.getAndSet(0);
+            return val;
+        }));
+
+        // Chart 2 : nombre de spawns MythicMobs depuis le dernier redémarrage
+        metrics.addCustomChart(new SingleLineChart("mythic_spawns", () -> {
+            int val = mythicSpawns.getAndSet(0);
+            return val;
+        }));
+
+        // Chart 3 : répartition MythicMobs vs Vanilla
+        metrics.addCustomChart(new SimplePie("spawn_type_ratio", () -> {
+            int mythic  = mythicSpawns.get();
+            int vanilla = vanillaSpawns.get();
+            if (mythic == 0 && vanilla == 0) return "None";
+            return mythic >= vanilla ? "MythicMobs" : "Vanilla";
+        }));
+
+        // Chart 4 : MythicMobs activé ou non
+        metrics.addCustomChart(new SimplePie("mythicmobs_enabled",
+                () -> mythicMobsEnabled ? "Enabled" : "Disabled"));
+
+        // Chart 5 : nombre de types de spawners configurés
+        metrics.addCustomChart(new SimplePie("configured_spawner_types", () -> {
+            int count = spawnerConfig.getAllSpawners().size();
+            if (count == 0)      return "0";
+            else if (count <= 5) return "1-5";
+            else if (count <= 15) return "6-15";
+            else                 return "16+";
+        }));
+
+        getLogger().info("bStats Metrics initialized (ID: " + BSTATS_PLUGIN_ID + ")");
     }
 
     @Override
@@ -95,6 +150,10 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     public NamespacedKey getMaxAmountKey()                     { return maxAmountKey; }
     public String getOpenEditorSpawnerId(UUID uuid)            { return openEditorSpawnerIds.get(uuid); }
     public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
+
+    /** Appelé par SpawnerTickManager pour incrémenter les compteurs bStats */
+    public void trackMythicSpawn()  { mythicSpawns.incrementAndGet(); }
+    public void trackVanillaSpawn() { vanillaSpawns.incrementAndGet(); }
 
     // ---- Commands ----
     @Override
@@ -225,6 +284,9 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
         tickManager.register(event.getBlockPlaced().getLocation(), delay);
+
+        // Compteur bStats
+        spawnersPlaced.incrementAndGet();
     }
 
     @EventHandler
@@ -239,21 +301,17 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
 
-        // Désenregistrer du tick manager dans tous les cas
         tickManager.unregister(block.getLocation());
 
         Player player = event.getPlayer();
         if (!player.hasPermission("wspawner.admin")) return;
 
-        // Récupérer le SpawnerData pour recréer l'item exact
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         if (data == null) return;
 
-        // Empêcher le drop vanilla et les XP
         event.setDropItems(false);
         event.setExpToDrop(0);
 
-        // Donner l'item dans l'inventaire (ou dropper au sol si plein)
         ItemStack spawnerItem = createSpawnerItem(data);
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(spawnerItem);
         if (!overflow.isEmpty()) {
@@ -262,10 +320,9 @@ public class WynversSpawners extends JavaPlugin implements Listener {
 
         player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
                 + "Spawner " + ChatColor.YELLOW + data.getDisplayName()
-                + ChatColor.WHITE + " récupéré !");
+                + ChatColor.WHITE + " r\u00e9cup\u00e9r\u00e9 !");
     }
 
-    /** Annuler le spawn vanilla pour nos spawners */
     @EventHandler
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {
         CreatureSpawner cs = event.getSpawner();
