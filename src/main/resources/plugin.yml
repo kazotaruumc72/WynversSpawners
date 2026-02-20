@@ -1,0 +1,14 @@
+name: WynversSpawners
+version: '${project.version}'
+main: com.wynvers.spawners.WynversSpawners
+api-version: '1.20'
+description: Custom spawner management plugin
+commands:
+  spawner:
+    description: Manage custom spawners
+    usage: /<command> <give|list> [player] [spawner_id]
+    permission: wynversspawners.command
+permissions:
+  wynversspawners.command:
+    description: Allows use of the spawner command
+    default: op
