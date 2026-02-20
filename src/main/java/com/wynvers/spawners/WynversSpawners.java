@@ -1,8 +1,8 @@
 package com.wynvers.spawners;
 
-import com.wynvers.spawners.libs.bstats.bukkit.Metrics;
-import com.wynvers.spawners.libs.bstats.charts.SimplePie;
-import com.wynvers.spawners.libs.bstats.charts.SingleLineChart;
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.SimplePie;
+import org.bstats.charts.SingleLineChart;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -56,9 +56,9 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     private final Map<UUID, String> openEditorSpawnerIds = new HashMap<>();
 
     // Compteurs bStats
-    private final AtomicInteger spawnersPlaced  = new AtomicInteger(0);
-    private final AtomicInteger mythicSpawns    = new AtomicInteger(0);
-    private final AtomicInteger vanillaSpawns   = new AtomicInteger(0);
+    private final AtomicInteger spawnersPlaced = new AtomicInteger(0);
+    private final AtomicInteger mythicSpawns   = new AtomicInteger(0);
+    private final AtomicInteger vanillaSpawns  = new AtomicInteger(0);
 
     @Override
     public void onEnable() {
@@ -84,7 +84,6 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(editorMenu, this);
 
         tickManager.start();
-
         initBStats();
 
         getLogger().info("WynversSpawners enabled!");
@@ -94,25 +93,23 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
 
         metrics.addCustomChart(new SingleLineChart("spawners_placed", () -> spawnersPlaced.getAndSet(0)));
-
-        metrics.addCustomChart(new SingleLineChart("mythic_spawns", () -> mythicSpawns.getAndSet(0)));
+        metrics.addCustomChart(new SingleLineChart("mythic_spawns",   () -> mythicSpawns.getAndSet(0)));
 
         metrics.addCustomChart(new SimplePie("spawn_type_ratio", () -> {
-            int mythic  = mythicSpawns.get();
-            int vanilla = vanillaSpawns.get();
-            if (mythic == 0 && vanilla == 0) return "None";
-            return mythic >= vanilla ? "MythicMobs" : "Vanilla";
+            int m = mythicSpawns.get(), v = vanillaSpawns.get();
+            if (m == 0 && v == 0) return "None";
+            return m >= v ? "MythicMobs" : "Vanilla";
         }));
 
         metrics.addCustomChart(new SimplePie("mythicmobs_enabled",
                 () -> mythicMobsEnabled ? "Enabled" : "Disabled"));
 
         metrics.addCustomChart(new SimplePie("configured_spawner_types", () -> {
-            int count = spawnerConfig.getAllSpawners().size();
-            if (count == 0)       return "0";
-            else if (count <= 5)  return "1-5";
-            else if (count <= 15) return "6-15";
-            else                  return "16+";
+            int c = spawnerConfig.getAllSpawners().size();
+            if (c == 0)       return "0";
+            else if (c <= 5)  return "1-5";
+            else if (c <= 15) return "6-15";
+            else              return "16+";
         }));
 
         getLogger().info("bStats Metrics initialized (ID: " + BSTATS_PLUGIN_ID + ")");
@@ -137,9 +134,8 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     public NamespacedKey getMaxAmountKey()                     { return maxAmountKey; }
     public String getOpenEditorSpawnerId(UUID uuid)            { return openEditorSpawnerIds.get(uuid); }
     public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
-
-    public void trackMythicSpawn()  { mythicSpawns.incrementAndGet(); }
-    public void trackVanillaSpawn() { vanillaSpawns.incrementAndGet(); }
+    public void trackMythicSpawn()                             { mythicSpawns.incrementAndGet(); }
+    public void trackVanillaSpawn()                            { vanillaSpawns.incrementAndGet(); }
 
     // ---- Commands ----
     @Override
@@ -240,25 +236,20 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName()) return;
         if (!(meta instanceof BlockStateMeta)) return;
-
         BlockStateMeta blockMeta = (BlockStateMeta) meta;
         BlockState itemState = blockMeta.getBlockState();
         if (!(itemState instanceof CreatureSpawner)) return;
         CreatureSpawner itemSpawner = (CreatureSpawner) itemState;
-
         String spawnerId = itemSpawner.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
-
         BlockState placedState = event.getBlockPlaced().getState();
         if (!(placedState instanceof CreatureSpawner)) return;
         CreatureSpawner placedSpawner = (CreatureSpawner) placedState;
-
         placedSpawner.setSpawnedType(EntityType.VILLAGER);
         placedSpawner.setDelay(itemSpawner.getDelay());
         placedSpawner.setMinSpawnDelay(itemSpawner.getMinSpawnDelay());
         placedSpawner.setMaxSpawnDelay(itemSpawner.getMaxSpawnDelay());
         placedSpawner.setRequiredPlayerRange(itemSpawner.getRequiredPlayerRange());
-
         copyPDC(itemSpawner, placedSpawner, spawnerIdKey, PersistentDataType.STRING);
         copyPDC(itemSpawner, placedSpawner, mythicMobTypeKey, PersistentDataType.STRING);
         copyPDCInt(itemSpawner, placedSpawner, minRadiusKey);
@@ -266,11 +257,9 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         copyPDCInt(itemSpawner, placedSpawner, minAmountKey);
         copyPDCInt(itemSpawner, placedSpawner, maxAmountKey);
         placedSpawner.update();
-
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
         tickManager.register(event.getBlockPlaced().getLocation(), delay);
-
         spawnersPlaced.incrementAndGet();
     }
 
@@ -278,31 +267,21 @@ public class WynversSpawners extends JavaPlugin implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (block.getType() != Material.SPAWNER) return;
-
         BlockState state = block.getState();
         if (!(state instanceof CreatureSpawner)) return;
         CreatureSpawner cs = (CreatureSpawner) state;
-
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
         if (spawnerId == null) return;
-
         tickManager.unregister(block.getLocation());
-
         Player player = event.getPlayer();
         if (!player.hasPermission("wspawner.admin")) return;
-
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         if (data == null) return;
-
         event.setDropItems(false);
         event.setExpToDrop(0);
-
         ItemStack spawnerItem = createSpawnerItem(data);
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(spawnerItem);
-        if (!overflow.isEmpty()) {
-            block.getWorld().dropItemNaturally(block.getLocation(), spawnerItem);
-        }
-
+        if (!overflow.isEmpty()) block.getWorld().dropItemNaturally(block.getLocation(), spawnerItem);
         player.sendMessage(ChatColor.GREEN + "[WynversSpawners] " + ChatColor.WHITE
                 + "Spawner " + ChatColor.YELLOW + data.getDisplayName()
                 + ChatColor.WHITE + " r\u00e9cup\u00e9r\u00e9 !");
