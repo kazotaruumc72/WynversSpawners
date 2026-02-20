@@ -1,0 +1,42 @@
+spawners:
+  iron_golem_spawner:
+    material: SPAWNER
+    display-name: "&6Spawner de Golem de Fer"
+    lore:
+      - "&7Place ce spawner pour"
+      - "&7faire apparaitre des Golems de Fer"
+    entity-type: IRON_GOLEM
+    delay: 200
+    min-spawn-delay: 100
+    max-spawn-delay: 400
+    spawn-count: 1
+    spawn-range: 4
+    required-player-range: 16
+
+  zombie_spawner:
+    material: SPAWNER
+    display-name: "&cSpawner de Zombie"
+    lore:
+      - "&7Place ce spawner pour"
+      - "&7faire apparaitre des Zombies"
+    entity-type: ZOMBIE
+    delay: 200
+    min-spawn-delay: 100
+    max-spawn-delay: 400
+    spawn-count: 2
+    spawn-range: 4
+    required-player-range: 16
+
+  skeleton_spawner:
+    material: SPAWNER
+    display-name: "&fSpawner de Squelette"
+    lore:
+      - "&7Place ce spawner pour"
+      - "&7faire apparaitre des Squelettes"
+    entity-type: SKELETON
+    delay: 200
+    min-spawn-delay: 100
+    max-spawn-delay: 400
+    spawn-count: 2
+    spawn-range: 4
+    required-player-range: 16
