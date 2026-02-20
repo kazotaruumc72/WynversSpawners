@@ -13,8 +13,6 @@ public class SpawnerData {
     private final EntityType entityType;
     private final String mythicMobType;
     private int delay;
-    private int spawnCount;
-    private int spawnRange;
     private int requiredPlayerRange;
     private int minRadius;
     private int maxRadius;
@@ -23,7 +21,7 @@ public class SpawnerData {
 
     public SpawnerData(String id, Material material, String displayName, List<String> lore,
                        EntityType entityType, String mythicMobType, int delay,
-                       int spawnCount, int spawnRange, int requiredPlayerRange,
+                       int requiredPlayerRange,
                        int minRadius, int maxRadius, int minAmount, int maxAmount) {
         this.id = id;
         this.material = material;
@@ -32,8 +30,6 @@ public class SpawnerData {
         this.entityType = entityType;
         this.mythicMobType = mythicMobType;
         this.delay = delay;
-        this.spawnCount = spawnCount;
-        this.spawnRange = spawnRange;
         this.requiredPlayerRange = requiredPlayerRange;
         this.minRadius = minRadius;
         this.maxRadius = maxRadius;
@@ -51,12 +47,6 @@ public class SpawnerData {
 
     public int getDelay() { return delay; }
     public void setDelay(int delay) { this.delay = delay; }
-
-    public int getSpawnCount() { return spawnCount; }
-    public void setSpawnCount(int spawnCount) { this.spawnCount = spawnCount; }
-
-    public int getSpawnRange() { return spawnRange; }
-    public void setSpawnRange(int spawnRange) { this.spawnRange = spawnRange; }
 
     public int getRequiredPlayerRange() { return requiredPlayerRange; }
     public void setRequiredPlayerRange(int requiredPlayerRange) { this.requiredPlayerRange = requiredPlayerRange; }

@@ -39,7 +39,6 @@ public class SpawnerConfig {
                 logger.warning("Invalid spawner entry: " + id);
                 continue;
             }
-
             try {
                 SpawnerData data = parseSpawner(id, section);
                 spawners.put(id, data);
@@ -48,7 +47,6 @@ public class SpawnerConfig {
                 logger.warning("Failed to load spawner '" + id + "': " + e.getMessage());
             }
         }
-
         logger.info("Loaded " + spawners.size() + " spawner(s) from config.");
     }
 
@@ -79,17 +77,15 @@ public class SpawnerConfig {
             }
         }
 
-        int delay              = section.getInt("delay", 200);
-        int spawnCount         = section.getInt("spawn-count", 1);
-        int spawnRange         = section.getInt("spawn-range", 4);
-        int requiredPlayerRange= section.getInt("required-player-range", 16);
-        int minRadius          = section.getInt("min-radius", 0);
-        int maxRadius          = section.getInt("max-radius", 0);
-        int minAmount          = section.getInt("min-amount", 0);
-        int maxAmount          = section.getInt("max-amount", 0);
+        int delay               = section.getInt("delay", 200);
+        int requiredPlayerRange = section.getInt("required-player-range", 16);
+        int minRadius           = section.getInt("min-radius", 0);
+        int maxRadius           = section.getInt("max-radius", 0);
+        int minAmount           = section.getInt("min-amount", 0);
+        int maxAmount           = section.getInt("max-amount", 0);
 
         return new SpawnerData(id, material, displayName, lore, entityType, mythicMobType,
-                delay, spawnCount, spawnRange, requiredPlayerRange,
+                delay, requiredPlayerRange,
                 minRadius, maxRadius, minAmount, maxAmount);
     }
 

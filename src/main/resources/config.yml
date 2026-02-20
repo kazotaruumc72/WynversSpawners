@@ -7,8 +7,6 @@ spawners:
       - "&7faire appara\u00eetre des Golems de Fer"
     entity-type: IRON_GOLEM
     delay: 200
-    spawn-count: 1
-    spawn-range: 4
     required-player-range: 16
     min-radius: 0
     max-radius: 0
@@ -23,8 +21,6 @@ spawners:
       - "&7faire appara\u00eetre des Zombies"
     entity-type: ZOMBIE
     delay: 200
-    spawn-count: 2
-    spawn-range: 4
     required-player-range: 16
     min-radius: 0
     max-radius: 0
@@ -39,8 +35,6 @@ spawners:
       - "&7faire appara\u00eetre des Squelettes"
     entity-type: SKELETON
     delay: 200
-    spawn-count: 2
-    spawn-range: 4
     required-player-range: 16
     min-radius: 0
     max-radius: 0
@@ -55,8 +49,6 @@ spawners:
       - "&7faire appara\u00eetre des \u00e9l\u00e9phants"
     entity-type: "mm:elephant"
     delay: 200
-    spawn-count: 1
-    spawn-range: 4
     required-player-range: 16
     min-radius: 1
     max-radius: 5
