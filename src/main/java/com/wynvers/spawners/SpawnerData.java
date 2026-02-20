@@ -18,10 +18,15 @@ public class SpawnerData {
     private final int spawnCount;
     private final int spawnRange;
     private final int requiredPlayerRange;
+    private final int minRadius;
+    private final int maxRadius;
+    private final int minAmount;
+    private final int maxAmount;
 
     public SpawnerData(String id, Material material, String displayName, List<String> lore,
                        EntityType entityType, String mythicMobType, int delay, int minSpawnDelay,
-                       int maxSpawnDelay, int spawnCount, int spawnRange, int requiredPlayerRange) {
+                       int maxSpawnDelay, int spawnCount, int spawnRange, int requiredPlayerRange,
+                       int minRadius, int maxRadius, int minAmount, int maxAmount) {
         this.id = id;
         this.material = material;
         this.displayName = displayName;
@@ -34,6 +39,10 @@ public class SpawnerData {
         this.spawnCount = spawnCount;
         this.spawnRange = spawnRange;
         this.requiredPlayerRange = requiredPlayerRange;
+        this.minRadius = minRadius;
+        this.maxRadius = maxRadius;
+        this.minAmount = minAmount;
+        this.maxAmount = maxAmount;
     }
 
     public String getId() {
@@ -86,5 +95,21 @@ public class SpawnerData {
 
     public int getRequiredPlayerRange() {
         return requiredPlayerRange;
+    }
+
+    public int getMinRadius() {
+        return minRadius;
+    }
+
+    public int getMaxRadius() {
+        return maxRadius;
+    }
+
+    public int getMinAmount() {
+        return minAmount;
+    }
+
+    public int getMaxAmount() {
+        return maxAmount;
     }
 }
