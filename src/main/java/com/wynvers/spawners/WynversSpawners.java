@@ -9,11 +9,12 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -30,24 +31,22 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
 public class WynversSpawners extends JavaPlugin implements Listener {
 
-    private static final double BLOCK_CENTER_OFFSET = 0.5;
-    private final Random random = new Random();
-
     private SpawnerConfig spawnerConfig;
     private SpawnerEditorMenu editorMenu;
+    private SpawnerTickManager tickManager;
+
     private NamespacedKey mythicMobTypeKey;
     private NamespacedKey spawnerIdKey;
     private NamespacedKey minRadiusKey;
     private NamespacedKey maxRadiusKey;
     private NamespacedKey minAmountKey;
     private NamespacedKey maxAmountKey;
-    private boolean mythicMobsEnabled = false;
 
+    private boolean mythicMobsEnabled = false;
     private final Map<UUID, String> openEditorSpawnerIds = new HashMap<>();
 
     @Override
@@ -64,24 +63,40 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         spawnerConfig = new SpawnerConfig(getLogger());
         spawnerConfig.loadSpawners(getConfig());
 
-        editorMenu = new SpawnerEditorMenu(this);
+        editorMenu  = new SpawnerEditorMenu(this);
+        tickManager = new SpawnerTickManager(this);
 
         mythicMobsEnabled = Bukkit.getPluginManager().getPlugin("MythicMobs") != null;
-        if (mythicMobsEnabled) getLogger().info("MythicMobs detected! Custom mob spawners enabled.");
+        if (mythicMobsEnabled) getLogger().info("MythicMobs detected!");
 
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(editorMenu, this);
+
+        tickManager.start();
         getLogger().info("WynversSpawners enabled!");
     }
 
     @Override
-    public void onDisable() { getLogger().info("WynversSpawners disabled!"); }
+    public void onDisable() {
+        tickManager.stop();
+        getLogger().info("WynversSpawners disabled!");
+    }
 
-    public SpawnerConfig getSpawnerConfig() { return spawnerConfig; }
-    public SpawnerEditorMenu getEditorMenu() { return editorMenu; }
-    public String getOpenEditorSpawnerId(UUID uuid) { return openEditorSpawnerIds.get(uuid); }
-    public void setOpenEditorSpawnerId(UUID uuid, String id) { openEditorSpawnerIds.put(uuid, id); }
+    // ---- Public accessors ----
+    public SpawnerConfig getSpawnerConfig()                    { return spawnerConfig; }
+    public SpawnerEditorMenu getEditorMenu()                   { return editorMenu; }
+    public SpawnerTickManager getTickManager()                 { return tickManager; }
+    public boolean isMythicMobsEnabled()                      { return mythicMobsEnabled; }
+    public NamespacedKey getMythicMobTypeKey()                 { return mythicMobTypeKey; }
+    public NamespacedKey getSpawnerIdKey()                     { return spawnerIdKey; }
+    public NamespacedKey getMinRadiusKey()                     { return minRadiusKey; }
+    public NamespacedKey getMaxRadiusKey()                     { return maxRadiusKey; }
+    public NamespacedKey getMinAmountKey()                     { return minAmountKey; }
+    public NamespacedKey getMaxAmountKey()                     { return maxAmountKey; }
+    public String getOpenEditorSpawnerId(UUID uuid)            { return openEditorSpawnerIds.get(uuid); }
+    public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
 
+    // ---- Commands ----
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!command.getName().equalsIgnoreCase("spawner")) return false;
@@ -119,8 +134,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         for (Map.Entry<String, SpawnerData> entry : all.entrySet()) {
             SpawnerData data = entry.getValue();
             String type = data.isMythicMob() ? "mm:" + data.getMythicMobType() : data.getEntityType().name();
-            sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + entry.getKey()
-                    + ChatColor.GRAY + " (" + type + ")");
+            sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + entry.getKey() + ChatColor.GRAY + " (" + type + ")");
         }
     }
 
@@ -140,6 +154,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         sender.sendMessage(ChatColor.GREEN + "WynversSpawners config reloaded!");
     }
 
+    // ---- Item creation ----
     private ItemStack createSpawnerItem(SpawnerData data) {
         ItemStack item = new ItemStack(data.getMaterial());
         ItemMeta meta = item.getItemMeta();
@@ -151,12 +166,13 @@ public class WynversSpawners extends JavaPlugin implements Listener {
                 BlockState state = blockMeta.getBlockState();
                 if (state instanceof CreatureSpawner) {
                     CreatureSpawner spawner = (CreatureSpawner) state;
-                    spawner.setSpawnedType(data.getEntityType());
+                    // Afficher VILLAGER dans le spawner en main (mob neutre visible)
+                    spawner.setSpawnedType(EntityType.VILLAGER);
                     spawner.setDelay(data.getDelay());
                     spawner.setMinSpawnDelay(data.getDelay());
                     spawner.setMaxSpawnDelay(data.getDelay());
                     spawner.setRequiredPlayerRange(data.getRequiredPlayerRange());
-                    // Toujours stocker toutes les clés PDC, même si valeur = 0
+                    // Stocker toutes les clés PDC
                     spawner.getPersistentDataContainer().set(spawnerIdKey, PersistentDataType.STRING, data.getId());
                     if (data.isMythicMob())
                         spawner.getPersistentDataContainer().set(mythicMobTypeKey, PersistentDataType.STRING, data.getMythicMobType());
@@ -172,6 +188,8 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         return item;
     }
 
+    // ---- Events ----
+
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
@@ -179,18 +197,28 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName()) return;
         if (!(meta instanceof BlockStateMeta)) return;
+
         BlockStateMeta blockMeta = (BlockStateMeta) meta;
         BlockState itemState = blockMeta.getBlockState();
         if (!(itemState instanceof CreatureSpawner)) return;
         CreatureSpawner itemSpawner = (CreatureSpawner) itemState;
+
+        // Vérifier que c'est un spawner WynversSpawners
+        String spawnerId = itemSpawner.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
+        if (spawnerId == null) return;
+
         BlockState placedState = event.getBlockPlaced().getState();
         if (!(placedState instanceof CreatureSpawner)) return;
         CreatureSpawner placedSpawner = (CreatureSpawner) placedState;
-        placedSpawner.setSpawnedType(itemSpawner.getSpawnedType());
+
+        // Copier les propriétés vanilla
+        placedSpawner.setSpawnedType(EntityType.VILLAGER);
         placedSpawner.setDelay(itemSpawner.getDelay());
         placedSpawner.setMinSpawnDelay(itemSpawner.getMinSpawnDelay());
         placedSpawner.setMaxSpawnDelay(itemSpawner.getMaxSpawnDelay());
         placedSpawner.setRequiredPlayerRange(itemSpawner.getRequiredPlayerRange());
+
+        // Copier toutes les clés PDC
         copyPDC(itemSpawner, placedSpawner, spawnerIdKey, PersistentDataType.STRING);
         copyPDC(itemSpawner, placedSpawner, mythicMobTypeKey, PersistentDataType.STRING);
         copyPDCInt(itemSpawner, placedSpawner, minRadiusKey);
@@ -198,6 +226,39 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         copyPDCInt(itemSpawner, placedSpawner, minAmountKey);
         copyPDCInt(itemSpawner, placedSpawner, maxAmountKey);
         placedSpawner.update();
+
+        // Enregistrer dans le tick manager
+        SpawnerData data = spawnerConfig.getSpawner(spawnerId);
+        int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
+        tickManager.register(event.getBlockPlaced().getLocation(), delay);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        if (block.getType() != Material.SPAWNER) return;
+        BlockState state = block.getState();
+        if (!(state instanceof CreatureSpawner)) return;
+        CreatureSpawner cs = (CreatureSpawner) state;
+        String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
+        if (spawnerId == null) return;
+        tickManager.unregister(block.getLocation());
+    }
+
+    /** Bloquer complètement le spawn vanilla pour nos spawners (le scheduler custom prend le relais) */
+    @EventHandler
+    public void onSpawnerSpawn(SpawnerSpawnEvent event) {
+        CreatureSpawner cs = event.getSpawner();
+        String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
+        if (spawnerId == null) return;
+        // Annuler le spawn vanilla : notre scheduler s'en occupe
+        event.setCancelled(true);
+        // Si le spawner vient d'être posé mais pas encore enregistré (ex: serveur restart)
+        if (!tickManager.isRegistered(cs.getLocation())) {
+            SpawnerData data = spawnerConfig.getSpawner(spawnerId);
+            int delay = data != null ? data.getDelay() : cs.getDelay();
+            tickManager.register(cs.getLocation(), delay);
+        }
     }
 
     @EventHandler
@@ -220,63 +281,9 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         editorMenu.open(player, data);
     }
 
-    @EventHandler(priority = EventPriority.LOW)
-    public void onSpawnerSpawn(SpawnerSpawnEvent event) {
-        CreatureSpawner spawner = event.getSpawner();
-        String mmType = spawner.getPersistentDataContainer().get(mythicMobTypeKey, PersistentDataType.STRING);
-        if (mmType == null || mmType.isEmpty()) return;
-        if (!mythicMobsEnabled) {
-            event.setCancelled(true);
-            getLogger().warning("Spawner with MythicMob type '" + mmType + "' attempted to spawn, but MythicMobs is not loaded!");
-            return;
-        }
-        event.setCancelled(true);
-
-        // Lire depuis le PDC d'abord, sinon fallback sur SpawnerData en config
-        SpawnerData configData = null;
-        String spawnerId = spawner.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
-        if (spawnerId != null) configData = spawnerConfig.getSpawner(spawnerId);
-
-        Integer pdcMinRadius = spawner.getPersistentDataContainer().get(minRadiusKey, PersistentDataType.INTEGER);
-        Integer pdcMaxRadius = spawner.getPersistentDataContainer().get(maxRadiusKey, PersistentDataType.INTEGER);
-        Integer pdcMinAmount = spawner.getPersistentDataContainer().get(minAmountKey, PersistentDataType.INTEGER);
-        Integer pdcMaxAmount = spawner.getPersistentDataContainer().get(maxAmountKey, PersistentDataType.INTEGER);
-
-        int actualMinRadius = pdcMinRadius != null ? pdcMinRadius : (configData != null ? configData.getMinRadius() : 0);
-        int actualMaxRadius = pdcMaxRadius != null ? pdcMaxRadius : (configData != null ? configData.getMaxRadius() : 0);
-        int actualMinAmount = pdcMinAmount != null ? pdcMinAmount : (configData != null ? configData.getMinAmount() : 1);
-        int actualMaxAmount = pdcMaxAmount != null ? pdcMaxAmount : (configData != null ? configData.getMaxAmount() : 1);
-
-        // Sécurité : s'assurer que min <= max
-        if (actualMinAmount < 1) actualMinAmount = 1;
-        if (actualMaxAmount < actualMinAmount) actualMaxAmount = actualMinAmount;
-
-        int spawnAmount = (actualMaxAmount > actualMinAmount)
-                ? actualMinAmount + random.nextInt(actualMaxAmount - actualMinAmount + 1)
-                : actualMinAmount;
-
-        for (int i = 0; i < spawnAmount; i++) {
-            try {
-                double offsetX = BLOCK_CENTER_OFFSET;
-                double offsetZ = BLOCK_CENTER_OFFSET;
-                if (actualMaxRadius > 0) {
-                    int radius = (actualMaxRadius > actualMinRadius)
-                            ? actualMinRadius + random.nextInt(actualMaxRadius - actualMinRadius + 1)
-                            : actualMinRadius;
-                    double angle    = random.nextDouble() * 2 * Math.PI;
-                    double distance = Math.sqrt(random.nextDouble()) * radius;
-                    offsetX = BLOCK_CENTER_OFFSET + Math.cos(angle) * distance;
-                    offsetZ = BLOCK_CENTER_OFFSET + Math.sin(angle) * distance;
-                }
-                io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
-                        .spawnMob(mmType, spawner.getLocation().add(offsetX, 0, offsetZ));
-            } catch (Exception e) {
-                getLogger().warning("Failed to spawn MythicMobs mob '" + mmType + "': " + e.getMessage());
-            }
-        }
-    }
-
-    private <T> void copyPDC(CreatureSpawner src, CreatureSpawner dst, NamespacedKey key, org.bukkit.persistence.PersistentDataType<T, T> type) {
+    // ---- PDC helpers ----
+    private <T> void copyPDC(CreatureSpawner src, CreatureSpawner dst, NamespacedKey key,
+                              org.bukkit.persistence.PersistentDataType<T, T> type) {
         T val = src.getPersistentDataContainer().get(key, type);
         if (val != null) dst.getPersistentDataContainer().set(key, type, val);
     }
