@@ -1,4 +1,5 @@
 spark-particles: true
+max-spawns-per-tick: 4
 
 spawners:
   iron_golem_spawner:

@@ -77,6 +77,7 @@ public class WSpawners extends JavaPlugin implements Listener {
         editorMenu  = new SpawnerEditorMenu(this);
         tickManager = new SpawnerTickManager(this);
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
+        tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
 
         mythicMobsEnabled = Bukkit.getPluginManager().getPlugin("MythicMobs") != null;
         if (mythicMobsEnabled) getLogger().info("MythicMobs detected!");
@@ -194,6 +195,7 @@ public class WSpawners extends JavaPlugin implements Listener {
         reloadConfig();
         spawnerConfig.loadSpawners(getConfig());
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
+        tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
         sender.sendMessage(ChatColor.GREEN + "WSpawners config reloaded!");
     }
 
