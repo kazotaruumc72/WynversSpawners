@@ -4,7 +4,7 @@ import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 import org.bstats.charts.SingleLineChart;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.wynvers.spawners.SpawnerDatabase.SpawnerRecord;
+
 public class WSpawners extends JavaPlugin implements Listener {
 
     private static final int BSTATS_PLUGIN_ID = 29665;
@@ -44,6 +46,8 @@ public class WSpawners extends JavaPlugin implements Listener {
     private SpawnerConfig spawnerConfig;
     private SpawnerEditorMenu editorMenu;
     private SpawnerTickManager tickManager;
+    private SpawnerDatabase database;
+    private MessageManager messageManager;
 
     private NamespacedKey mythicMobTypeKey;
     private NamespacedKey spawnerIdKey;
@@ -71,6 +75,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         minAmountKey     = new NamespacedKey(this, "min_amount");
         maxAmountKey     = new NamespacedKey(this, "max_amount");
 
+        messageManager = new MessageManager(this);
+
         spawnerConfig = new SpawnerConfig(getLogger());
         spawnerConfig.loadSpawners(getConfig());
 
@@ -78,6 +84,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         tickManager = new SpawnerTickManager(this);
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
         tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+
+        database = new SpawnerDatabase(getDataFolder(), getLogger());
 
         mythicMobsEnabled = Bukkit.getPluginManager().getPlugin("MythicMobs") != null;
         if (mythicMobsEnabled) getLogger().info("MythicMobs detected!");
@@ -120,6 +128,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         tickManager.stop();
+        if (database != null) database.close();
         getLogger().info("WSpawners disabled!");
     }
 
@@ -127,6 +136,8 @@ public class WSpawners extends JavaPlugin implements Listener {
     public SpawnerConfig getSpawnerConfig()                    { return spawnerConfig; }
     public SpawnerEditorMenu getEditorMenu()                   { return editorMenu; }
     public SpawnerTickManager getTickManager()                 { return tickManager; }
+    public SpawnerDatabase getDatabase()                       { return database; }
+    public MessageManager getMessageManager()                  { return messageManager; }
     public boolean isMythicMobsEnabled()                      { return mythicMobsEnabled; }
     public NamespacedKey getMythicMobTypeKey()                 { return mythicMobTypeKey; }
     public NamespacedKey getSpawnerIdKey()                     { return spawnerIdKey; }
@@ -143,12 +154,14 @@ public class WSpawners extends JavaPlugin implements Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!command.getName().equalsIgnoreCase("spawner")) return false;
-        if (args.length == 0) { sender.sendMessage(ChatColor.YELLOW + "Usage: /spawner <give|list|reload>"); return true; }
+        if (args.length == 0) { sender.sendMessage(messageManager.get("command-usage")); return true; }
         switch (args[0].toLowerCase()) {
-            case "list":   handleList(sender);       return true;
-            case "give":   handleGive(sender, args); return true;
-            case "reload": handleReload(sender);     return true;
-            default: sender.sendMessage(ChatColor.RED + "Unknown sub-command: " + args[0]); return true;
+            case "list":       handleList(sender);           return true;
+            case "give":       handleGive(sender, args);     return true;
+            case "reload":     handleReload(sender);         return true;
+            case "myspawners": handleMySpawners(sender);     return true;
+            case "info":       handleInfo(sender, args);     return true;
+            default: sender.sendMessage(messageManager.get("unknown-command", "command", args[0])); return true;
         }
     }
 
@@ -157,7 +170,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         if (!command.getName().equalsIgnoreCase("spawner")) return Collections.emptyList();
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            for (String sub : Arrays.asList("give", "list", "reload"))
+            List<String> subs = new ArrayList<>(Arrays.asList("give", "list", "reload", "myspawners", "info"));
+            for (String sub : subs)
                 if (sub.startsWith(args[0].toLowerCase())) completions.add(sub);
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             for (Player p : Bukkit.getOnlinePlayers())
@@ -165,6 +179,9 @@ public class WSpawners extends JavaPlugin implements Listener {
         } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
             for (String id : spawnerConfig.getAllSpawners().keySet())
                 if (id.toLowerCase().startsWith(args[2].toLowerCase())) completions.add(id);
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+            for (Player p : Bukkit.getOnlinePlayers())
+                if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) completions.add(p.getName());
         }
         Collections.sort(completions);
         return completions;
@@ -172,31 +189,77 @@ public class WSpawners extends JavaPlugin implements Listener {
 
     private void handleList(CommandSender sender) {
         Map<String, SpawnerData> all = spawnerConfig.getAllSpawners();
-        if (all.isEmpty()) { sender.sendMessage(ChatColor.YELLOW + "No spawners configured."); return; }
-        sender.sendMessage(ChatColor.GREEN + "Available spawners:");
+        if (all.isEmpty()) { sender.sendMessage(messageManager.get("list-empty")); return; }
+        sender.sendMessage(messageManager.get("list-header"));
         for (Map.Entry<String, SpawnerData> entry : all.entrySet()) {
             SpawnerData data = entry.getValue();
             String type = data.isMythicMob() ? "mm:" + data.getMythicMobType() : data.getEntityType().name();
-            sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + entry.getKey() + ChatColor.GRAY + " (" + type + ")");
+            sender.sendMessage(messageManager.get("list-entry", "id", entry.getKey(), "type", type));
         }
     }
 
     private void handleGive(CommandSender sender, String[] args) {
-        if (args.length < 3) { sender.sendMessage(ChatColor.RED + "Usage: /spawner give <player> <spawner_id>"); return; }
+        if (args.length < 3) { sender.sendMessage(messageManager.get("give-usage")); return; }
         Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) { sender.sendMessage(ChatColor.RED + "Player not found: " + args[1]); return; }
+        if (target == null) { sender.sendMessage(messageManager.get("give-player-not-found", "player", args[1])); return; }
         SpawnerData data = spawnerConfig.getSpawner(args[2].toLowerCase());
-        if (data == null) { sender.sendMessage(ChatColor.RED + "Unknown spawner: " + args[2]); return; }
+        if (data == null) { sender.sendMessage(messageManager.get("give-unknown-spawner", "id", args[2])); return; }
         target.getInventory().addItem(createSpawnerItem(data));
-        sender.sendMessage(ChatColor.GREEN + "Gave " + data.getDisplayName() + ChatColor.GREEN + " to " + target.getName());
+        sender.sendMessage(messageManager.get("give-success", "name", data.getDisplayName(), "player", target.getName()));
     }
 
     private void handleReload(CommandSender sender) {
         reloadConfig();
         spawnerConfig.loadSpawners(getConfig());
+        messageManager.reload();
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
         tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
-        sender.sendMessage(ChatColor.GREEN + "WSpawners config reloaded!");
+        sender.sendMessage(messageManager.get("reload-success"));
+    }
+
+    private void handleMySpawners(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(messageManager.get("myspawners-not-player"));
+            return;
+        }
+        Player player = (Player) sender;
+        List<SpawnerRecord> records = database.getSpawners(player.getUniqueId());
+        if (records.isEmpty()) {
+            player.sendMessage(messageManager.get("myspawners-empty"));
+            return;
+        }
+        player.sendMessage(messageManager.get("myspawners-header"));
+        for (SpawnerRecord r : records) {
+            String type = r.getMythicMobType() != null ? "mm:" + r.getMythicMobType() : r.getEntityType();
+            player.sendMessage(messageManager.get("myspawners-entry",
+                    "spawner_id", r.getSpawnerId(),
+                    "world", r.getWorld(),
+                    "x", String.valueOf(r.getX()),
+                    "y", String.valueOf(r.getY()),
+                    "z", String.valueOf(r.getZ()),
+                    "type", type));
+        }
+    }
+
+    private void handleInfo(CommandSender sender, String[] args) {
+        if (args.length < 2) { sender.sendMessage(messageManager.get("info-usage")); return; }
+        String targetName = args[1];
+        List<SpawnerRecord> records = database.getSpawnersByName(targetName);
+        if (records.isEmpty()) {
+            sender.sendMessage(messageManager.get("info-empty"));
+            return;
+        }
+        sender.sendMessage(messageManager.get("info-header", "player", targetName));
+        for (SpawnerRecord r : records) {
+            String type = r.getMythicMobType() != null ? "mm:" + r.getMythicMobType() : r.getEntityType();
+            sender.sendMessage(messageManager.get("info-entry",
+                    "spawner_id", r.getSpawnerId(),
+                    "world", r.getWorld(),
+                    "x", String.valueOf(r.getX()),
+                    "y", String.valueOf(r.getY()),
+                    "z", String.valueOf(r.getZ()),
+                    "type", type));
+        }
     }
 
     // ---- Item creation ----
@@ -265,6 +328,12 @@ public class WSpawners extends JavaPlugin implements Listener {
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
         tickManager.register(event.getBlockPlaced().getLocation(), delay);
         spawnersPlaced.incrementAndGet();
+
+        // Record in database
+        if (data != null) {
+            database.addSpawner(event.getPlayer().getUniqueId(), event.getPlayer().getName(),
+                    spawnerId, event.getBlockPlaced().getLocation(), data);
+        }
     }
 
     @EventHandler
@@ -278,7 +347,18 @@ public class WSpawners extends JavaPlugin implements Listener {
         if (spawnerId == null) return;
         tickManager.unregister(block.getLocation());
         Player player = event.getPlayer();
-        if (!player.hasPermission("wspawner.admin")) return;
+
+        // Check permissions: admin or owner with wspawners.use
+        UUID ownerUuid = database.getOwner(block.getLocation());
+        boolean isOwner = ownerUuid != null && ownerUuid.equals(player.getUniqueId());
+        boolean isAdmin = player.hasPermission("wspawner.admin");
+
+        if (!isAdmin && !(isOwner && player.hasPermission("wspawners.use"))) {
+            event.setCancelled(true);
+            player.sendMessage(messageManager.get("spawner-no-permission-break"));
+            return;
+        }
+
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         if (data == null) return;
         event.setDropItems(false);
@@ -286,9 +366,10 @@ public class WSpawners extends JavaPlugin implements Listener {
         ItemStack spawnerItem = createSpawnerItem(data);
         Map<Integer, ItemStack> overflow = player.getInventory().addItem(spawnerItem);
         if (!overflow.isEmpty()) block.getWorld().dropItemNaturally(block.getLocation(), spawnerItem);
-        player.sendMessage(ChatColor.GREEN + "[WSpawners] " + ChatColor.WHITE
-                + "Spawner " + ChatColor.YELLOW + data.getDisplayName()
-                + ChatColor.WHITE + " r\u00e9cup\u00e9r\u00e9 !");
+        player.sendMessage(messageManager.get("spawner-recovered", "name", data.getDisplayName()));
+
+        // Remove from database
+        database.removeSpawner(block.getLocation());
     }
 
     @EventHandler
@@ -316,9 +397,9 @@ public class WSpawners extends JavaPlugin implements Listener {
         if (!(state instanceof CreatureSpawner)) return;
         CreatureSpawner cs = (CreatureSpawner) state;
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
-        if (spawnerId == null) { player.sendMessage(ChatColor.RED + "Ce spawner n'est pas g\u00e9r\u00e9 par WSpawners."); return; }
+        if (spawnerId == null) { player.sendMessage(messageManager.get("spawner-not-managed")); return; }
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
-        if (data == null) { player.sendMessage(ChatColor.RED + "SpawnerData introuvable pour l'ID: " + spawnerId); return; }
+        if (data == null) { player.sendMessage(messageManager.get("spawner-data-not-found", "id", spawnerId)); return; }
         event.setCancelled(true);
         openEditorSpawnerIds.put(player.getUniqueId(), spawnerId);
         editorMenu.open(player, data);

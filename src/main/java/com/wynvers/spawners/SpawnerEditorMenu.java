@@ -1,7 +1,6 @@
 package com.wynvers.spawners;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -20,55 +19,64 @@ import java.util.UUID;
 
 public class SpawnerEditorMenu implements Listener {
 
-    private static final String MENU_TITLE = ChatColor.DARK_GRAY + "" + ChatColor.BOLD + "\u2699 Admin Spawner Editor";
-
     private static final Map<Integer, String[]> SLOT_FIELDS = new HashMap<>();
 
     static {
-        SLOT_FIELDS.put(10, new String[]{"delay",                "Delay (ticks)"});
-        SLOT_FIELDS.put(13, new String[]{"required-player-range","Required Player Range"});
-        SLOT_FIELDS.put(28, new String[]{"min-radius",           "Min Radius"});
-        SLOT_FIELDS.put(30, new String[]{"max-radius",           "Max Radius"});
-        SLOT_FIELDS.put(32, new String[]{"min-amount",           "Min Amount"});
-        SLOT_FIELDS.put(34, new String[]{"max-amount",           "Max Amount"});
+        SLOT_FIELDS.put(10, new String[]{"delay",                "field-delay"});
+        SLOT_FIELDS.put(13, new String[]{"required-player-range","field-required-player-range"});
+        SLOT_FIELDS.put(28, new String[]{"min-radius",           "field-min-radius"});
+        SLOT_FIELDS.put(30, new String[]{"max-radius",           "field-max-radius"});
+        SLOT_FIELDS.put(32, new String[]{"min-amount",           "field-min-amount"});
+        SLOT_FIELDS.put(34, new String[]{"max-amount",           "field-max-amount"});
     }
 
     private final WSpawners plugin;
     private final Map<UUID, String[]> pendingEdits = new HashMap<>();
+    private String menuTitle;
 
     public SpawnerEditorMenu(WSpawners plugin) {
         this.plugin = plugin;
+        refreshTitle();
+    }
+
+    private void refreshTitle() {
+        menuTitle = plugin.getMessageManager().get("editor-title");
+    }
+
+    private MessageManager msg() {
+        return plugin.getMessageManager();
     }
 
     public void open(Player player, SpawnerData data) {
-        Inventory inv = Bukkit.createInventory(null, 54, MENU_TITLE);
+        refreshTitle();
+        Inventory inv = Bukkit.createInventory(null, 54, menuTitle);
 
         ItemStack pane = makeItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < 54; i++) inv.setItem(i, pane);
 
         String mobType = data.isMythicMob() ? "mm:" + data.getMythicMobType() : data.getEntityType().name();
         inv.setItem(4, makeItem(Material.SPAWNER,
-                ChatColor.GOLD + "" + ChatColor.BOLD + data.getId(),
-                ChatColor.GRAY + "Type: " + ChatColor.WHITE + mobType,
-                ChatColor.GRAY + "Display: " + data.getDisplayName()));
+                MessageManager.parseMiniMessage("<gold><bold>" + data.getId()),
+                msg().get("editor-spawner-info-type", "type", mobType),
+                msg().get("editor-spawner-info-display", "name", data.getDisplayName())));
 
-        buildButton(inv, 10, data, "delay",                 "Delay (ticks)",           Material.CLOCK);
-        buildButton(inv, 13, data, "required-player-range", "Required Player Range",   Material.ENDER_EYE);
-        buildButton(inv, 28, data, "min-radius",            "Min Radius",              Material.CYAN_DYE);
-        buildButton(inv, 30, data, "max-radius",            "Max Radius",              Material.BLUE_DYE);
-        buildButton(inv, 32, data, "min-amount",            "Min Amount",              Material.GREEN_DYE);
-        buildButton(inv, 34, data, "max-amount",            "Max Amount",              Material.LIME_DYE);
+        buildButton(inv, 10, data, "delay",                 msg().get("field-delay"),                   Material.CLOCK);
+        buildButton(inv, 13, data, "required-player-range", msg().get("field-required-player-range"),   Material.ENDER_EYE);
+        buildButton(inv, 28, data, "min-radius",            msg().get("field-min-radius"),              Material.CYAN_DYE);
+        buildButton(inv, 30, data, "max-radius",            msg().get("field-max-radius"),              Material.BLUE_DYE);
+        buildButton(inv, 32, data, "min-amount",            msg().get("field-min-amount"),              Material.GREEN_DYE);
+        buildButton(inv, 34, data, "max-amount",            msg().get("field-max-amount"),              Material.LIME_DYE);
 
-        inv.setItem(49, makeItem(Material.BARRIER, ChatColor.RED + "Fermer"));
+        inv.setItem(49, makeItem(Material.BARRIER, msg().get("editor-close")));
         player.openInventory(inv);
     }
 
     private void buildButton(Inventory inv, int slot, SpawnerData data, String field, String label, Material icon) {
         int current = getCurrentValue(data, field);
         inv.setItem(slot, makeItem(icon,
-                ChatColor.YELLOW + label,
-                ChatColor.GRAY + "Valeur actuelle: " + ChatColor.WHITE + current,
-                ChatColor.AQUA + "Clic gauche " + ChatColor.GRAY + "pour modifier"));
+                MessageManager.parseMiniMessage("<yellow>" + label),
+                msg().get("editor-button-value", "value", String.valueOf(current)),
+                msg().get("editor-button-click")));
     }
 
     private int getCurrentValue(SpawnerData data, String field) {
@@ -98,7 +106,7 @@ public class SpawnerEditorMenu implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         if (event.getView().getTitle() == null) return;
-        if (!event.getView().getTitle().equals(MENU_TITLE)) return;
+        if (!event.getView().getTitle().equals(menuTitle)) return;
 
         event.setCancelled(true);
         Player player = (Player) event.getWhoClicked();
@@ -112,11 +120,11 @@ public class SpawnerEditorMenu implements Listener {
         String spawnerId = plugin.getOpenEditorSpawnerId(player.getUniqueId());
         if (spawnerId == null) return;
 
+        String fieldLabel = msg().get(fieldInfo[1]);
+
         player.closeInventory();
-        pendingEdits.put(player.getUniqueId(), new String[]{spawnerId, fieldInfo[0], fieldInfo[1]});
-        player.sendMessage(ChatColor.GOLD + "[WSpawners] " + ChatColor.WHITE
-                + "Entrez la nouvelle valeur pour " + ChatColor.YELLOW + fieldInfo[1]
-                + ChatColor.GRAY + " (ou tapez " + ChatColor.RED + "annuler" + ChatColor.GRAY + ") :");
+        pendingEdits.put(player.getUniqueId(), new String[]{spawnerId, fieldInfo[0], fieldLabel});
+        player.sendMessage(msg().get("editor-input-prompt", "field", fieldLabel));
     }
 
     @EventHandler
@@ -130,7 +138,7 @@ public class SpawnerEditorMenu implements Listener {
         String[] info = pendingEdits.remove(uuid);
 
         if (input.equalsIgnoreCase("annuler")) {
-            player.sendMessage(ChatColor.GRAY + "Modification annulée.");
+            player.sendMessage(msg().get("editor-cancelled"));
             return;
         }
 
@@ -138,11 +146,11 @@ public class SpawnerEditorMenu implements Listener {
         try {
             value = Integer.parseInt(input);
         } catch (NumberFormatException e) {
-            player.sendMessage(ChatColor.RED + "Valeur invalide ! Entrez un nombre entier.");
+            player.sendMessage(msg().get("editor-invalid-value"));
             return;
         }
         if (value < 0) {
-            player.sendMessage(ChatColor.RED + "La valeur doit être égale ou supérieure à 0.");
+            player.sendMessage(msg().get("editor-negative-value"));
             return;
         }
 
@@ -151,7 +159,7 @@ public class SpawnerEditorMenu implements Listener {
         String label     = info[2];
 
         SpawnerData data = plugin.getSpawnerConfig().getSpawner(spawnerId);
-        if (data == null) { player.sendMessage(ChatColor.RED + "Spawner introuvable : " + spawnerId); return; }
+        if (data == null) { player.sendMessage(msg().get("editor-spawner-not-found", "id", spawnerId)); return; }
 
         applyValue(data, fieldKey, value);
 
@@ -163,13 +171,13 @@ public class SpawnerEditorMenu implements Listener {
             SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
             if (updatedData == null) {
                 plugin.getLogger().severe("Spawner introuvable après rechargement : " + spawnerId);
-                player.sendMessage(ChatColor.RED + "[WSpawners] Erreur : spawner introuvable après sauvegarde.");
+                player.sendMessage(msg().get("editor-error-reload"));
                 return;
             }
-            player.sendMessage(ChatColor.GREEN + "[WSpawners] " + ChatColor.WHITE
-                    + label + ChatColor.GRAY + " mis à jour à " + ChatColor.YELLOW + value
-                    + ChatColor.GRAY + " pour " + ChatColor.WHITE + spawnerId
-                    + ChatColor.GRAY + " et sauvegardé dans config.yml.");
+            player.sendMessage(msg().get("editor-saved",
+                    "label", label,
+                    "value", String.valueOf(value),
+                    "id", spawnerId));
             plugin.getEditorMenu().open(player, updatedData);
             plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
         });

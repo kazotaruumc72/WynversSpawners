@@ -1,6 +1,5 @@
 package com.wynvers.spawners;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -57,11 +56,11 @@ public class SpawnerConfig {
         if (material == null) throw new IllegalArgumentException("Invalid material: " + materialName);
 
         String rawDisplayName = section.getString("display-name", id);
-        String displayName = ChatColor.translateAlternateColorCodes('&', rawDisplayName);
+        String displayName = MessageManager.parseMiniMessage(rawDisplayName);
 
         List<String> rawLore = section.getStringList("lore");
         List<String> lore = rawLore.stream()
-                .map(line -> ChatColor.translateAlternateColorCodes('&', line))
+                .map(MessageManager::parseMiniMessage)
                 .collect(Collectors.toList());
 
         String entityTypeName = section.getString("entity-type", "PIG");

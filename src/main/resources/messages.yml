@@ -1,0 +1,65 @@
+# ============================================================
+#  WSpawners – messages.yml (MiniMessage format)
+#  All plugin messages, editor labels, and UI text.
+#  Placeholders use {key} syntax and are replaced before parsing.
+#  Colour / formatting reference: https://docs.advntr.dev/minimessage/format.html
+# ============================================================
+
+# ---- General command messages ----
+command-usage: "<yellow>Usage: /spawner <give|list|reload|myspawners|info>"
+unknown-command: "<red>Commande inconnue : {command}"
+
+# ---- /spawner list ----
+list-empty: "<yellow>Aucun spawner configuré."
+list-header: "<green>Spawners disponibles :"
+list-entry: "<gray> - <white>{id} <gray>({type})"
+
+# ---- /spawner give ----
+give-usage: "<red>Usage: /spawner give <joueur> <spawner_id>"
+give-player-not-found: "<red>Joueur introuvable : {player}"
+give-unknown-spawner: "<red>Spawner inconnu : {id}"
+give-success: "<green>Spawner {name} <green>donné à {player}"
+
+# ---- /spawner reload ----
+reload-success: "<green>Configuration WSpawners rechargée !"
+
+# ---- /spawner myspawners ----
+myspawners-header: "<green>Vos spawners placés :"
+myspawners-entry: "<gray> - <white>{spawner_id} <gray>à <yellow>{world} <gray>({x}, {y}, {z}) <gray>Type: <white>{type}"
+myspawners-empty: "<yellow>Vous n'avez aucun spawner placé."
+myspawners-not-player: "<red>Cette commande ne peut être utilisée que par un joueur."
+
+# ---- /spawner info <player> ----
+info-usage: "<red>Usage: /spawner info <joueur>"
+info-header: "<green>Spawners de {player} :"
+info-entry: "<gray> - <white>{spawner_id} <gray>à <yellow>{world} <gray>({x}, {y}, {z}) <gray>Type: <white>{type}"
+info-empty: "<yellow>Ce joueur n'a aucun spawner placé."
+
+# ---- Block events ----
+spawner-not-managed: "<red>Ce spawner n'est pas géré par WSpawners."
+spawner-data-not-found: "<red>SpawnerData introuvable pour l'ID : {id}"
+spawner-recovered: "<green>[WSpawners] <white>Spawner <yellow>{name} <white>récupéré !"
+spawner-no-permission-break: "<red>Vous ne pouvez pas casser ce spawner."
+
+# ---- Editor menu ----
+editor-title: "<dark_gray><bold>⚙ Admin Spawner Editor"
+editor-close: "<red>Fermer"
+editor-spawner-info-type: "<gray>Type: <white>{type}"
+editor-spawner-info-display: "<gray>Affichage: {name}"
+editor-button-value: "<gray>Valeur actuelle: <white>{value}"
+editor-button-click: "<aqua>Clic gauche <gray>pour modifier"
+editor-input-prompt: "<gold>[WSpawners] <white>Entrez la nouvelle valeur pour <yellow>{field} <gray>(ou tapez <red>annuler<gray>) :"
+editor-cancelled: "<gray>Modification annulée."
+editor-invalid-value: "<red>Valeur invalide ! Entrez un nombre entier."
+editor-negative-value: "<red>La valeur doit être égale ou supérieure à 0."
+editor-spawner-not-found: "<red>Spawner introuvable : {id}"
+editor-saved: "<green>[WSpawners] <white>{label} <gray>mis à jour à <yellow>{value} <gray>pour <white>{id} <gray>et sauvegardé dans config.yml."
+editor-error-reload: "<red>[WSpawners] Erreur : spawner introuvable après sauvegarde."
+
+# ---- Editor field labels ----
+field-delay: "Delay (ticks)"
+field-required-player-range: "Required Player Range"
+field-min-radius: "Min Radius"
+field-max-radius: "Max Radius"
+field-min-amount: "Min Amount"
+field-max-amount: "Max Amount"
