@@ -73,6 +73,7 @@
     </repositories>
 
     <build>
+        <finalName>${project.name}-${project.version}</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -90,7 +91,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Shade + relocate bStats dans le jar final -->
+            <!-- Shade + relocate les dépendances dans le jar final -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -103,6 +104,7 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <minimizeJar>true</minimizeJar>
                             <relocations>
                                 <relocation>
                                     <pattern>org.bstats</pattern>
@@ -120,6 +122,24 @@
                                     <exclude>io.lumine:*</exclude>
                                 </excludes>
                             </artifactSet>
+                            <filters>
+                                <!-- Garder toutes les classes Adventure (chargées via ServiceLoader) -->
+                                <filter>
+                                    <artifact>net.kyori:*</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                                <!-- Exclure les fichiers de signature des dépendances -->
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>
