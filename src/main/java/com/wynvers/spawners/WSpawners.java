@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.wynvers.spawners.SpawnerDatabase.SpawnerRecord;
+
 public class WSpawners extends JavaPlugin implements Listener {
 
     private static final int BSTATS_PLUGIN_ID = 29665;
@@ -44,6 +46,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     private SpawnerConfig spawnerConfig;
     private SpawnerEditorMenu editorMenu;
     private SpawnerTickManager tickManager;
+    private SpawnerDatabase database;
 
     private NamespacedKey mythicMobTypeKey;
     private NamespacedKey spawnerIdKey;
@@ -78,6 +81,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         tickManager = new SpawnerTickManager(this);
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
         tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+
+        database = new SpawnerDatabase(getDataFolder(), getLogger());
 
         mythicMobsEnabled = Bukkit.getPluginManager().getPlugin("MythicMobs") != null;
         if (mythicMobsEnabled) getLogger().info("MythicMobs detected!");
@@ -120,6 +125,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         tickManager.stop();
+        if (database != null) database.close();
         getLogger().info("WSpawners disabled!");
     }
 
@@ -127,6 +133,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     public SpawnerConfig getSpawnerConfig()                    { return spawnerConfig; }
     public SpawnerEditorMenu getEditorMenu()                   { return editorMenu; }
     public SpawnerTickManager getTickManager()                 { return tickManager; }
+    public SpawnerDatabase getDatabase()                       { return database; }
     public boolean isMythicMobsEnabled()                      { return mythicMobsEnabled; }
     public NamespacedKey getMythicMobTypeKey()                 { return mythicMobTypeKey; }
     public NamespacedKey getSpawnerIdKey()                     { return spawnerIdKey; }
@@ -143,11 +150,13 @@ public class WSpawners extends JavaPlugin implements Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!command.getName().equalsIgnoreCase("spawner")) return false;
-        if (args.length == 0) { sender.sendMessage(ChatColor.YELLOW + "Usage: /spawner <give|list|reload>"); return true; }
+        if (args.length == 0) { sender.sendMessage(ChatColor.YELLOW + "Usage: /spawner <give|list|reload|myspawners|info>"); return true; }
         switch (args[0].toLowerCase()) {
-            case "list":   handleList(sender);       return true;
-            case "give":   handleGive(sender, args); return true;
-            case "reload": handleReload(sender);     return true;
+            case "list":       handleList(sender);           return true;
+            case "give":       handleGive(sender, args);     return true;
+            case "reload":     handleReload(sender);         return true;
+            case "myspawners": handleMySpawners(sender);     return true;
+            case "info":       handleInfo(sender, args);     return true;
             default: sender.sendMessage(ChatColor.RED + "Unknown sub-command: " + args[0]); return true;
         }
     }
@@ -157,7 +166,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         if (!command.getName().equalsIgnoreCase("spawner")) return Collections.emptyList();
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            for (String sub : Arrays.asList("give", "list", "reload"))
+            List<String> subs = new ArrayList<>(Arrays.asList("give", "list", "reload", "myspawners", "info"));
+            for (String sub : subs)
                 if (sub.startsWith(args[0].toLowerCase())) completions.add(sub);
         } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             for (Player p : Bukkit.getOnlinePlayers())
@@ -165,6 +175,9 @@ public class WSpawners extends JavaPlugin implements Listener {
         } else if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
             for (String id : spawnerConfig.getAllSpawners().keySet())
                 if (id.toLowerCase().startsWith(args[2].toLowerCase())) completions.add(id);
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+            for (Player p : Bukkit.getOnlinePlayers())
+                if (p.getName().toLowerCase().startsWith(args[1].toLowerCase())) completions.add(p.getName());
         }
         Collections.sort(completions);
         return completions;
