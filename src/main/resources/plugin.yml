@@ -7,9 +7,12 @@ softdepend: [MythicMobs]
 commands:
   spawner:
     description: Manage custom spawners
-    usage: /<command> <give|list> [player] [spawner_id]
+    usage: /<command> <give|list|reload|myspawners|info> [player] [spawner_id]
     permission: wspawners.command
 permissions:
   wspawners.command:
     description: Allows use of the spawner command
     default: op
+  wspawners.use:
+    description: Allows players to place and recover their own spawners
+    default: true
