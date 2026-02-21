@@ -1,6 +1,6 @@
-name: WynversSpawners
+name: WSpawners
 version: '${project.version}'
-main: com.wynvers.spawners.WynversSpawners
+main: com.wynvers.spawners.WSpawners
 api-version: '1.20'
 description: Custom spawner management plugin
 softdepend: [MythicMobs]
@@ -8,8 +8,8 @@ commands:
   spawner:
     description: Manage custom spawners
     usage: /<command> <give|list> [player] [spawner_id]
-    permission: wynversspawners.command
+    permission: wspawners.command
 permissions:
-  wynversspawners.command:
+  wspawners.command:
     description: Allows use of the spawner command
     default: op

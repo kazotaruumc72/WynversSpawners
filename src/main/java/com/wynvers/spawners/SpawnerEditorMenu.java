@@ -33,10 +33,10 @@ public class SpawnerEditorMenu implements Listener {
         SLOT_FIELDS.put(34, new String[]{"max-amount",           "Max Amount"});
     }
 
-    private final WynversSpawners plugin;
+    private final WSpawners plugin;
     private final Map<UUID, String[]> pendingEdits = new HashMap<>();
 
-    public SpawnerEditorMenu(WynversSpawners plugin) {
+    public SpawnerEditorMenu(WSpawners plugin) {
         this.plugin = plugin;
     }
 
@@ -114,7 +114,7 @@ public class SpawnerEditorMenu implements Listener {
 
         player.closeInventory();
         pendingEdits.put(player.getUniqueId(), new String[]{spawnerId, fieldInfo[0], fieldInfo[1]});
-        player.sendMessage(ChatColor.GOLD + "[WynversSpawners] " + ChatColor.WHITE
+        player.sendMessage(ChatColor.GOLD + "[WSpawners] " + ChatColor.WHITE
                 + "Entrez la nouvelle valeur pour " + ChatColor.YELLOW + fieldInfo[1]
                 + ChatColor.GRAY + " (ou tapez " + ChatColor.RED + "annuler" + ChatColor.GRAY + ") :");
     }

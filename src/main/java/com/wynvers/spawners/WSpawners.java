@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class WynversSpawners extends JavaPlugin implements Listener {
+public class WSpawners extends JavaPlugin implements Listener {
 
     private static final int BSTATS_PLUGIN_ID = 29665;
 
@@ -87,7 +87,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         tickManager.start();
         initBStats();
 
-        getLogger().info("WynversSpawners enabled!");
+        getLogger().info("WSpawners enabled!");
     }
 
     private void initBStats() {
@@ -314,7 +314,7 @@ public class WynversSpawners extends JavaPlugin implements Listener {
         if (!(state instanceof CreatureSpawner)) return;
         CreatureSpawner cs = (CreatureSpawner) state;
         String spawnerId = cs.getPersistentDataContainer().get(spawnerIdKey, PersistentDataType.STRING);
-        if (spawnerId == null) { player.sendMessage(ChatColor.RED + "Ce spawner n'est pas g\u00e9r\u00e9 par WynversSpawners."); return; }
+        if (spawnerId == null) { player.sendMessage(ChatColor.RED + "Ce spawner n'est pas g\u00e9r\u00e9 par WSpawners."); return; }
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         if (data == null) { player.sendMessage(ChatColor.RED + "SpawnerData introuvable pour l'ID: " + spawnerId); return; }
         event.setCancelled(true);
