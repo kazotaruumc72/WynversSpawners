@@ -137,7 +137,7 @@ public class SpawnerEditorMenu implements Listener {
         String input = event.getMessage().trim();
         String[] info = pendingEdits.remove(uuid);
 
-        if (input.equalsIgnoreCase("annuler")) {
+        if (input.equalsIgnoreCase("cancel")) {
             player.sendMessage(msg().get("editor-cancelled"));
             return;
         }
@@ -170,7 +170,7 @@ public class SpawnerEditorMenu implements Listener {
             plugin.getSpawnerConfig().loadSpawners(plugin.getConfig());
             SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
             if (updatedData == null) {
-                plugin.getLogger().severe("Spawner introuvable après rechargement : " + spawnerId);
+                plugin.getLogger().severe("Spawner not found after reload: " + spawnerId);
                 player.sendMessage(msg().get("editor-error-reload"));
                 return;
             }

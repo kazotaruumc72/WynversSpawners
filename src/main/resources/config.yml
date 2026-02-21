@@ -4,10 +4,10 @@ max-spawns-per-tick: 4
 spawners:
   iron_golem_spawner:
     material: SPAWNER
-    display-name: "<gold>Spawner de Golem de Fer"
+    display-name: "<gold>Iron Golem Spawner"
     lore:
-      - "<gray>Place ce spawner pour"
-      - "<gray>faire apparaître des Golems de Fer"
+      - "<gray>Place this spawner to"
+      - "<gray>spawn Iron Golems"
     entity-type: IRON_GOLEM
     delay: 200
     required-player-range: 16
@@ -18,10 +18,10 @@ spawners:
 
   zombie_spawner:
     material: SPAWNER
-    display-name: "<red>Spawner de Zombie"
+    display-name: "<red>Zombie Spawner"
     lore:
-      - "<gray>Place ce spawner pour"
-      - "<gray>faire apparaître des Zombies"
+      - "<gray>Place this spawner to"
+      - "<gray>spawn Zombies"
     entity-type: ZOMBIE
     delay: 200
     required-player-range: 16
@@ -32,10 +32,10 @@ spawners:
 
   skeleton_spawner:
     material: SPAWNER
-    display-name: "<white>Spawner de Squelette"
+    display-name: "<white>Skeleton Spawner"
     lore:
-      - "<gray>Place ce spawner pour"
-      - "<gray>faire apparaître des Squelettes"
+      - "<gray>Place this spawner to"
+      - "<gray>spawn Skeletons"
     entity-type: SKELETON
     delay: 200
     required-player-range: 16
@@ -46,10 +46,10 @@ spawners:
 
   elephant_spawner:
     material: SPAWNER
-    display-name: "<gold>Spawner de éléphant"
+    display-name: "<gold>Elephant Spawner"
     lore:
-      - "<gray>Place ce spawner pour"
-      - "<gray>faire apparaître des éléphants"
+      - "<gray>Place this spawner to"
+      - "<gray>spawn Elephants"
     entity-type: "mm:elephant"
     delay: 200
     required-player-range: 16
