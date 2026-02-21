@@ -6,7 +6,7 @@
 # ============================================================
 
 # ---- General command messages ----
-command-usage: "<yellow>Usage: /spawner \<give|list|reload|myspawners|info\>"
+command-usage: '<yellow>Usage: /spawner \<give|list|reload|myspawners|info\>'
 unknown-command: "<red>Unknown command: {command}"
 
 # ---- /spawner list ----
@@ -15,7 +15,7 @@ list-header: "<green>Available spawners:"
 list-entry: "<gray> - <white>{id} <gray>({type})"
 
 # ---- /spawner give ----
-give-usage: "<red>Usage: /spawner give \<player\> \<spawner_id\>"
+give-usage: '<red>Usage: /spawner give \<player\> \<spawner_id\>'
 give-player-not-found: "<red>Player not found: {player}"
 give-unknown-spawner: "<red>Unknown spawner: {id}"
 give-success: "<green>Spawner {name} <green>given to {player}"
@@ -30,7 +30,7 @@ myspawners-empty: "<yellow>You have no placed spawners."
 myspawners-not-player: "<red>This command can only be used by a player."
 
 # ---- /spawner info ----
-info-usage: "<red>Usage: /spawner info \<player\>"
+info-usage: '<red>Usage: /spawner info \<player\>'
 info-header: "<green>Spawners of {player}:"
 info-entry: "<gray> - <white>{spawner_id} <gray>at <yellow>{world} <gray>({x}, {y}, {z}) <gray>Type: <white>{type}"
 info-empty: "<yellow>This player has no placed spawners."
