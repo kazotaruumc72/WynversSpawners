@@ -57,7 +57,8 @@ public class SpawnerDatabase {
                 + " max_radius INTEGER,"
                 + " min_amount INTEGER,"
                 + " max_amount INTEGER,"
-                + " placed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                + " placed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                + " UNIQUE(world, x, y, z)"
                 + ")"
             );
         }

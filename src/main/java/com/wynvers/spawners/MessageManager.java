@@ -59,7 +59,9 @@ public class MessageManager {
      * Get the raw MiniMessage string for a key (before placeholder replacement).
      */
     public String getRaw(String key) {
-        return messages.getString(key, "<red>Missing message: " + key);
+        String value = messages.getString(key);
+        if (value != null) return value;
+        return "<red>Missing message: " + key.replace("<", "\\<");
     }
 
     /**
