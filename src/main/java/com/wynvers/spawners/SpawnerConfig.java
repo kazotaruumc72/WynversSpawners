@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public class SpawnerConfig {
 
@@ -55,13 +54,9 @@ public class SpawnerConfig {
         Material material = Material.matchMaterial(materialName);
         if (material == null) throw new IllegalArgumentException("Invalid material: " + materialName);
 
-        String rawDisplayName = section.getString("display-name", id);
-        String displayName = MessageManager.parseMiniMessage(rawDisplayName);
+        String displayName = section.getString("display-name", id);
 
-        List<String> rawLore = section.getStringList("lore");
-        List<String> lore = rawLore.stream()
-                .map(MessageManager::parseMiniMessage)
-                .collect(Collectors.toList());
+        List<String> lore = section.getStringList("lore");
 
         String entityTypeName = section.getString("entity-type", "PIG");
         String mythicMobType = null;
