@@ -133,24 +133,28 @@ public class SpawnerTickManager {
                 : minAmount;
 
         for (int i = 0; i < spawnCount; i++) {
-            Location spawnLoc = getSpawnLocation(loc, minRadius, maxRadius);
+            final Location spawnLoc = getSpawnLocation(loc, minRadius, maxRadius);
 
-            if (mmType != null && !mmType.isEmpty() && plugin.isMythicMobsEnabled()) {
-                try {
-                    io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
-                            .spawnMob(mmType, spawnLoc);
-                    plugin.trackMythicSpawn();
-                } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to spawn MythicMob '" + mmType + "': " + e.getMessage());
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                World spawnWorld = spawnLoc.getWorld();
+                if (spawnWorld == null || !spawnLoc.getChunk().isLoaded()) return;
+                if (mmType != null && !mmType.isEmpty() && plugin.isMythicMobsEnabled()) {
+                    try {
+                        io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
+                                .spawnMob(mmType, spawnLoc);
+                        plugin.trackMythicSpawn();
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("Failed to spawn MythicMob '" + mmType + "': " + e.getMessage());
+                    }
+                } else if (data != null && !data.isMythicMob()) {
+                    try {
+                        loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                        plugin.trackVanillaSpawn();
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("Failed to spawn vanilla mob: " + e.getMessage());
+                    }
                 }
-            } else if (data != null && !data.isMythicMob()) {
-                try {
-                    loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
-                    plugin.trackVanillaSpawn();
-                } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to spawn vanilla mob: " + e.getMessage());
-                }
-            }
+            }, i);
         }
     }
 
