@@ -2,6 +2,7 @@ package com.wynvers.spawners;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -27,6 +28,7 @@ public class SpawnerTickManager {
     private final Map<String, Location> locations  = new HashMap<>();
 
     private BukkitTask task;
+    private boolean sparkEnabled = true;
 
     public SpawnerTickManager(WynversSpawners plugin) {
         this.plugin = plugin;
@@ -58,6 +60,10 @@ public class SpawnerTickManager {
         return countdowns.containsKey(locKey(loc));
     }
 
+    public void setSparkEnabled(boolean sparkEnabled) {
+        this.sparkEnabled = sparkEnabled;
+    }
+
     private void tick() {
         Set<String> toRemove = new HashSet<>();
 
@@ -85,6 +91,11 @@ public class SpawnerTickManager {
                 boolean playerNearby = world.getPlayers().stream()
                         .anyMatch(p -> p.getLocation().distanceSquared(loc) <= (double) playerRange * playerRange);
                 if (!playerNearby) continue;
+            }
+
+            if (sparkEnabled) {
+                world.spawnParticle(Particle.ELECTRIC_SPARK,
+                        loc.clone().add(0.5, 0.5, 0.5), 5, 0.3, 0.3, 0.3, 0);
             }
 
             int remaining = entry.getValue() - TICK_INTERVAL;
