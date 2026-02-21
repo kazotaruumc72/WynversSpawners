@@ -1,3 +1,5 @@
+spark-particles: true
+
 spawners:
   iron_golem_spawner:
     material: SPAWNER
