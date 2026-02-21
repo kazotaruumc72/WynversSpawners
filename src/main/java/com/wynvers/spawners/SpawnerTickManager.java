@@ -10,10 +10,11 @@ import org.bukkit.block.CreatureSpawner;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 
@@ -26,9 +27,11 @@ public class SpawnerTickManager {
 
     private final Map<String, Integer>  countdowns = new HashMap<>();
     private final Map<String, Location> locations  = new HashMap<>();
+    private final Queue<Runnable> spawnQueue = new ArrayDeque<>();
 
     private BukkitTask task;
     private boolean sparkEnabled = true;
+    private int maxSpawnsPerTick = 4;
 
     public SpawnerTickManager(WSpawners plugin) {
         this.plugin = plugin;
@@ -42,6 +45,7 @@ public class SpawnerTickManager {
         if (task != null) { task.cancel(); task = null; }
         countdowns.clear();
         locations.clear();
+        spawnQueue.clear();
     }
 
     public void register(Location loc, int delayTicks) {
@@ -64,7 +68,18 @@ public class SpawnerTickManager {
         this.sparkEnabled = sparkEnabled;
     }
 
+    public void setMaxSpawnsPerTick(int maxSpawnsPerTick) {
+        this.maxSpawnsPerTick = Math.max(1, maxSpawnsPerTick);
+    }
+
     private void tick() {
+        // Process pending spawns from queue (rate-limited)
+        int spawnsProcessed = 0;
+        while (!spawnQueue.isEmpty() && spawnsProcessed < maxSpawnsPerTick) {
+            spawnQueue.poll().run();
+            spawnsProcessed++;
+        }
+
         Set<String> toRemove = new HashSet<>();
 
         for (Map.Entry<String, Integer> entry : countdowns.entrySet()) {
@@ -135,7 +150,7 @@ public class SpawnerTickManager {
         for (int i = 0; i < spawnCount; i++) {
             final Location spawnLoc = getSpawnLocation(loc, minRadius, maxRadius);
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            spawnQueue.add(() -> {
                 World spawnWorld = spawnLoc.getWorld();
                 if (spawnWorld == null || !spawnLoc.getChunk().isLoaded()) return;
                 if (mmType != null && !mmType.isEmpty() && plugin.isMythicMobsEnabled()) {
@@ -154,7 +169,7 @@ public class SpawnerTickManager {
                         plugin.getLogger().warning("Failed to spawn vanilla mob: " + e.getMessage());
                     }
                 }
-            }, i);
+            });
         }
     }
 
