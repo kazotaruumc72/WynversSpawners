@@ -159,11 +159,18 @@ public class SpawnerEditorMenu implements Listener {
             FileConfiguration config = plugin.getConfig();
             plugin.getSpawnerConfig().saveField(config, spawnerId, fieldKey, value);
             plugin.saveConfig();
+            plugin.getSpawnerConfig().loadSpawners(plugin.getConfig());
+            SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
+            if (updatedData == null) {
+                plugin.getLogger().severe("Spawner introuvable après rechargement : " + spawnerId);
+                player.sendMessage(ChatColor.RED + "[WSpawners] Erreur : spawner introuvable après sauvegarde.");
+                return;
+            }
             player.sendMessage(ChatColor.GREEN + "[WSpawners] " + ChatColor.WHITE
                     + label + ChatColor.GRAY + " mis à jour à " + ChatColor.YELLOW + value
                     + ChatColor.GRAY + " pour " + ChatColor.WHITE + spawnerId
                     + ChatColor.GRAY + " et sauvegardé dans config.yml.");
-            plugin.getEditorMenu().open(player, data);
+            plugin.getEditorMenu().open(player, updatedData);
             plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
         });
     }
