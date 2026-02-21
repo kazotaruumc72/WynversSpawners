@@ -392,7 +392,12 @@ public class WSpawners extends JavaPlugin implements Listener {
         Block block = event.getClickedBlock();
         if (block == null || block.getType() != Material.SPAWNER) return;
         Player player = event.getPlayer();
-        if (!player.hasPermission("wspawner.admin")) return;
+        boolean isAdmin = player.hasPermission("wspawner.admin");
+        if (!isAdmin) {
+            UUID ownerUuid = database.getOwner(block.getLocation());
+            boolean isOwner = ownerUuid != null && ownerUuid.equals(player.getUniqueId());
+            if (!(isOwner && player.hasPermission("wspawners.use"))) return;
+        }
         BlockState state = block.getState();
         if (!(state instanceof CreatureSpawner)) return;
         CreatureSpawner cs = (CreatureSpawner) state;

@@ -10,6 +10,9 @@ commands:
     usage: /<command> <give|list|reload|myspawners|info> [player] [spawner_id]
     permission: wspawners.command
 permissions:
+  wspawner.admin:
+    description: Allows full admin access to spawner menus and management
+    default: op
   wspawners.command:
     description: Allows use of the spawner command
     default: op
