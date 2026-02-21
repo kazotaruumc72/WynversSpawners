@@ -9,6 +9,7 @@ import org.bukkit.entity.EntityType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -41,7 +42,7 @@ public class SpawnerConfig {
             }
             try {
                 SpawnerData data = parseSpawner(id, section);
-                spawners.put(id, data);
+                spawners.put(id.toLowerCase(Locale.ROOT), data);
                 logger.info("Loaded spawner: " + id);
             } catch (IllegalArgumentException e) {
                 logger.warning("Failed to load spawner '" + id + "': " + e.getMessage());
@@ -93,7 +94,7 @@ public class SpawnerConfig {
         config.set("spawners." + spawnerId + "." + field, value);
     }
 
-    public SpawnerData getSpawner(String id) { return spawners.get(id); }
+    public SpawnerData getSpawner(String id) { return id != null ? spawners.get(id.toLowerCase(Locale.ROOT)) : null; }
 
     public Map<String, SpawnerData> getAllSpawners() {
         return Collections.unmodifiableMap(spawners);
