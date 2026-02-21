@@ -267,8 +267,10 @@ public class WSpawners extends JavaPlugin implements Listener {
         ItemStack item = new ItemStack(data.getMaterial());
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(data.getDisplayName());
-            meta.setLore(data.getLore());
+            meta.setDisplayName(MessageManager.parseMiniMessage(data.getDisplayName()));
+            meta.setLore(data.getLore().stream()
+                    .map(MessageManager::parseMiniMessage)
+                    .collect(java.util.stream.Collectors.toList()));
             if (meta instanceof BlockStateMeta) {
                 BlockStateMeta blockMeta = (BlockStateMeta) meta;
                 BlockState state = blockMeta.getBlockState();
