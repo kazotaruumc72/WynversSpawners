@@ -21,7 +21,7 @@ public class SpawnerTickManager {
 
     private static final int TICK_INTERVAL = 20;
 
-    private final WynversSpawners plugin;
+    private final WSpawners plugin;
     private final Random random = new Random();
 
     private final Map<String, Integer>  countdowns = new HashMap<>();
@@ -30,7 +30,7 @@ public class SpawnerTickManager {
     private BukkitTask task;
     private boolean sparkEnabled = true;
 
-    public SpawnerTickManager(WynversSpawners plugin) {
+    public SpawnerTickManager(WSpawners plugin) {
         this.plugin = plugin;
     }
 
