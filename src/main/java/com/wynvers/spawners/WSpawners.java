@@ -59,7 +59,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     private boolean mythicMobsEnabled = false;
     private final Map<UUID, String> openEditorSpawnerIds = new HashMap<>();
 
-    // Compteurs bStats
+    // bStats counters
     private final AtomicInteger spawnersPlaced = new AtomicInteger(0);
     private final AtomicInteger mythicSpawns   = new AtomicInteger(0);
     private final AtomicInteger vanillaSpawns  = new AtomicInteger(0);
