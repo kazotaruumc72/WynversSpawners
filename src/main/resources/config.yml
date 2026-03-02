@@ -1,5 +1,8 @@
 spark-particles: true
 max-spawns-per-tick: 4
+# Maximum living entities within the spawn radius before spawning is skipped.
+# Set to 0 to disable the limit.
+max-nearby-entities: 0
 
 spawners:
   iron_golem_spawner:
