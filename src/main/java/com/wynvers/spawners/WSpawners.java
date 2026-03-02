@@ -96,6 +96,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         tickManager.start();
         initBStats();
 
+        WSpawnersAPI.init(this);
+
         getLogger().info("WSpawners enabled!");
     }
 
@@ -129,6 +131,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     public void onDisable() {
         tickManager.stop();
         if (database != null) database.close();
+        WSpawnersAPI.shutdown();
         getLogger().info("WSpawners disabled!");
     }
 
@@ -149,6 +152,15 @@ public class WSpawners extends JavaPlugin implements Listener {
     public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
     public void trackMythicSpawn()                             { mythicSpawns.incrementAndGet(); }
     public void trackVanillaSpawn()                            { vanillaSpawns.incrementAndGet(); }
+
+    /** Reloads configuration and refreshes all in-memory state. */
+    public void reloadPlugin() {
+        reloadConfig();
+        spawnerConfig.loadSpawners(getConfig());
+        messageManager.reload();
+        tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
+        tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+    }
 
     // ---- Commands ----
     @Override
@@ -209,11 +221,7 @@ public class WSpawners extends JavaPlugin implements Listener {
     }
 
     private void handleReload(CommandSender sender) {
-        reloadConfig();
-        spawnerConfig.loadSpawners(getConfig());
-        messageManager.reload();
-        tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
-        tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+        reloadPlugin();
         sender.sendMessage(messageManager.get("reload-success"));
     }
 
@@ -276,7 +284,7 @@ public class WSpawners extends JavaPlugin implements Listener {
                 BlockState state = blockMeta.getBlockState();
                 if (state instanceof CreatureSpawner) {
                     CreatureSpawner spawner = (CreatureSpawner) state;
-                    spawner.setSpawnedType(EntityType.VILLAGER);
+                    spawner.setSpawnedType(data.isMythicMob() ? EntityType.PIG : data.getEntityType());
                     spawner.setDelay(data.getDelay());
                     spawner.setMinSpawnDelay(data.getDelay());
                     spawner.setMaxSpawnDelay(data.getDelay());
@@ -314,7 +322,7 @@ public class WSpawners extends JavaPlugin implements Listener {
         BlockState placedState = event.getBlockPlaced().getState();
         if (!(placedState instanceof CreatureSpawner)) return;
         CreatureSpawner placedSpawner = (CreatureSpawner) placedState;
-        placedSpawner.setSpawnedType(EntityType.VILLAGER);
+        placedSpawner.setSpawnedType(itemSpawner.getSpawnedType());
         placedSpawner.setDelay(itemSpawner.getDelay());
         placedSpawner.setMinSpawnDelay(itemSpawner.getMinSpawnDelay());
         placedSpawner.setMaxSpawnDelay(itemSpawner.getMaxSpawnDelay());
