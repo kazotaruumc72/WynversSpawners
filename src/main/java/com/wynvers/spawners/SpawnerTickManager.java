@@ -23,17 +23,54 @@ import java.util.Set;
 public class SpawnerTickManager {
 
     private static final int TICK_INTERVAL = 20;
+    private static final int DEFAULT_SPAWN_DELAY_TICKS = 200;
+    /** Maximum number of pending spawn tasks. Excess spawns are dropped to prevent queue buildup. */
+    private static final int MAX_PENDING_SPAWNS = 64;
 
     private final WSpawners plugin;
     private final Random random = new Random();
 
-    private final Map<String, Integer>  countdowns = new HashMap<>();
-    private final Map<String, Location> locations  = new HashMap<>();
+    private final Map<String, Integer>  countdowns   = new HashMap<>();
+    private final Map<String, Location> locations    = new HashMap<>();
+    /** PDC-derived data cached per spawner key – populated once on first tick, eliminating
+     *  repeated {@code block.getState()} and PDC reads in the hot loop. */
+    private final Map<String, SpawnerCacheEntry> spawnerCache = new HashMap<>();
     private final Queue<Runnable> spawnQueue = new ArrayDeque<>();
 
     private BukkitTask task;
     private boolean sparkEnabled = true;
     private int maxSpawnsPerTick = 4;
+
+    /** Immutable snapshot of PDC-stored spawn parameters for one spawner block.
+     *  Created once on first encounter, reused every subsequent tick. */
+    private static final class SpawnerCacheEntry {
+        final String spawnerId;
+        final String mmType;
+        final int    minRadius, maxRadius, minAmount, maxAmount;
+        final double minScale, maxScale;
+        /** Vanilla spawner's own requiredPlayerRange – used as fallback when SpawnerData is unavailable. */
+        final int    fallbackPlayerRange;
+
+        SpawnerCacheEntry(CreatureSpawner cs, WSpawners plugin) {
+            this.spawnerId           = cs.getPersistentDataContainer().get(plugin.getSpawnerIdKey(),      PersistentDataType.STRING);
+            this.mmType              = cs.getPersistentDataContainer().get(plugin.getMythicMobTypeKey(),  PersistentDataType.STRING);
+            this.fallbackPlayerRange = cs.getRequiredPlayerRange();
+            Integer pMinR  = cs.getPersistentDataContainer().get(plugin.getMinRadiusKey(),      PersistentDataType.INTEGER);
+            Integer pMaxR  = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(),      PersistentDataType.INTEGER);
+            Integer pMinA  = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(),      PersistentDataType.INTEGER);
+            Integer pMaxA  = cs.getPersistentDataContainer().get(plugin.getMaxAmountKey(),      PersistentDataType.INTEGER);
+            Double  pMinS  = cs.getPersistentDataContainer().get(plugin.getMinScaleKey(),       PersistentDataType.DOUBLE);
+            Double  pMaxS  = cs.getPersistentDataContainer().get(plugin.getMaxScaleKey(),       PersistentDataType.DOUBLE);
+            // Fall back to SpawnerData config values when PDC key is absent
+            SpawnerData data = this.spawnerId != null ? plugin.getSpawnerConfig().getSpawner(this.spawnerId) : null;
+            this.minRadius = pMinR != null ? pMinR : (data != null ? data.getMinRadius() : 0);
+            this.maxRadius = pMaxR != null ? pMaxR : (data != null ? data.getMaxRadius() : 0);
+            this.minAmount = pMinA != null ? pMinA : (data != null ? data.getMinAmount() : 1);
+            this.maxAmount = pMaxA != null ? pMaxA : (data != null ? data.getMaxAmount() : 1);
+            this.minScale  = pMinS != null ? pMinS : (data != null ? data.getMinScale()  : 1.0);
+            this.maxScale  = pMaxS != null ? pMaxS : (data != null ? data.getMaxScale()  : 1.0);
+        }
+    }
 
     public SpawnerTickManager(WSpawners plugin) {
         this.plugin = plugin;
@@ -47,19 +84,22 @@ public class SpawnerTickManager {
         if (task != null) { task.cancel(); task = null; }
         countdowns.clear();
         locations.clear();
+        spawnerCache.clear();
         spawnQueue.clear();
     }
 
     public void register(Location loc, int delayTicks) {
         String key = locKey(loc);
         locations.put(key, loc.clone());
-        countdowns.put(key, delayTicks > 0 ? delayTicks : 200);
+        countdowns.put(key, delayTicks > 0 ? delayTicks : DEFAULT_SPAWN_DELAY_TICKS);
+        // Cache is populated lazily on the first tick to avoid reading the block state here
     }
 
     public void unregister(Location loc) {
         String key = locKey(loc);
         locations.remove(key);
         countdowns.remove(key);
+        spawnerCache.remove(key);
     }
 
     public boolean isRegistered(Location loc) {
@@ -75,11 +115,12 @@ public class SpawnerTickManager {
     }
 
     private void tick() {
-        // Process pending spawns from queue (rate-limited)
-        int spawnsProcessed = 0;
-        while (!spawnQueue.isEmpty() && spawnsProcessed < maxSpawnsPerTick) {
-            spawnQueue.poll().run();
-            spawnsProcessed++;
+        // Dispatch pending spawn tasks one per server-tick to avoid bundling multiple
+        // expensive spawnEntity/spawnMob calls into a single tick (burst lag spike).
+        int tickOffset = 1;
+        while (!spawnQueue.isEmpty() && tickOffset <= maxSpawnsPerTick) {
+            Bukkit.getScheduler().runTaskLater(plugin, spawnQueue.poll(), tickOffset);
+            tickOffset++;
         }
 
         Set<String> toRemove = new HashSet<>();
@@ -92,18 +133,24 @@ public class SpawnerTickManager {
             World world = loc.getWorld();
             if (world == null) continue;
 
+            // Cheap block-type check – avoids full state deserialization every tick
             Block block = world.getBlockAt(loc);
             if (block.getType() != org.bukkit.Material.SPAWNER) { toRemove.add(key); continue; }
 
-            BlockState state = block.getState();
-            if (!(state instanceof CreatureSpawner)) { toRemove.add(key); continue; }
-            CreatureSpawner cs = (CreatureSpawner) state;
+            // Populate cache on first encounter (reads PDC once, reused every subsequent tick)
+            SpawnerCacheEntry cached = spawnerCache.get(key);
+            if (cached == null) {
+                BlockState state = block.getState();
+                if (!(state instanceof CreatureSpawner)) { toRemove.add(key); continue; }
+                cached = new SpawnerCacheEntry((CreatureSpawner) state, plugin);
+                spawnerCache.put(key, cached);
+            }
 
-            String spawnerId = cs.getPersistentDataContainer()
-                    .get(plugin.getSpawnerIdKey(), PersistentDataType.STRING);
-            SpawnerData data = spawnerId != null ? plugin.getSpawnerConfig().getSpawner(spawnerId) : null;
+            // SpawnerData is looked up fresh each tick so editor changes take effect immediately
+            SpawnerData data = cached.spawnerId != null
+                    ? plugin.getSpawnerConfig().getSpawner(cached.spawnerId) : null;
 
-            int playerRange = data != null ? data.getRequiredPlayerRange() : cs.getRequiredPlayerRange();
+            int playerRange = data != null ? data.getRequiredPlayerRange() : cached.fallbackPlayerRange;
             if (playerRange > 0) {
                 boolean playerNearby = world.getPlayers().stream()
                         .anyMatch(p -> p.getLocation().distanceSquared(loc) <= (double) playerRange * playerRange);
@@ -118,33 +165,24 @@ public class SpawnerTickManager {
             int remaining = entry.getValue() - TICK_INTERVAL;
             if (remaining > 0) { entry.setValue(remaining); continue; }
 
-            spawnMobs(cs, loc, data);
+            spawnMobs(cached, loc, data);
 
-            int delay = data != null ? data.getDelay() : cs.getDelay();
-            if (delay <= 0) delay = 200;
-            entry.setValue(delay);
+            int spawnDelay = data != null ? data.getDelay() : DEFAULT_SPAWN_DELAY_TICKS;
+            if (spawnDelay <= 0) spawnDelay = DEFAULT_SPAWN_DELAY_TICKS;
+            entry.setValue(spawnDelay);
         }
 
-        toRemove.forEach(k -> { countdowns.remove(k); locations.remove(k); });
+        toRemove.forEach(k -> { countdowns.remove(k); locations.remove(k); spawnerCache.remove(k); });
     }
 
-    private void spawnMobs(CreatureSpawner cs, Location loc, SpawnerData data) {
-        String mmType = cs.getPersistentDataContainer()
-                .get(plugin.getMythicMobTypeKey(), PersistentDataType.STRING);
-
-        Integer pdcMinRadius = cs.getPersistentDataContainer().get(plugin.getMinRadiusKey(), PersistentDataType.INTEGER);
-        Integer pdcMaxRadius = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(), PersistentDataType.INTEGER);
-        Integer pdcMinAmount = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(), PersistentDataType.INTEGER);
-        Integer pdcMaxAmount = cs.getPersistentDataContainer().get(plugin.getMaxAmountKey(), PersistentDataType.INTEGER);
-        Double pdcMinScale   = cs.getPersistentDataContainer().get(plugin.getMinScaleKey(), PersistentDataType.DOUBLE);
-        Double pdcMaxScale   = cs.getPersistentDataContainer().get(plugin.getMaxScaleKey(), PersistentDataType.DOUBLE);
-
-        int minRadius = pdcMinRadius != null ? pdcMinRadius : (data != null ? data.getMinRadius() : 0);
-        int maxRadius = pdcMaxRadius != null ? pdcMaxRadius : (data != null ? data.getMaxRadius() : 0);
-        int minAmount = pdcMinAmount != null ? pdcMinAmount : (data != null ? data.getMinAmount() : 1);
-        int maxAmount = pdcMaxAmount != null ? pdcMaxAmount : (data != null ? data.getMaxAmount() : 1);
-        double minScale = pdcMinScale != null ? pdcMinScale : (data != null ? data.getMinScale() : 1.0);
-        double maxScale = pdcMaxScale != null ? pdcMaxScale : (data != null ? data.getMaxScale() : 1.0);
+    private void spawnMobs(SpawnerCacheEntry cached, Location loc, SpawnerData data) {
+        String mmType   = cached.mmType;
+        int minRadius   = cached.minRadius;
+        int maxRadius   = cached.maxRadius;
+        int minAmount   = cached.minAmount;
+        int maxAmount   = cached.maxAmount;
+        double minScale = cached.minScale;
+        double maxScale = cached.maxScale;
 
         if (minAmount < 1) minAmount = 1;
         if (maxAmount < minAmount) maxAmount = minAmount;
@@ -158,6 +196,7 @@ public class SpawnerTickManager {
             final double finalMinScale = minScale;
             final double finalMaxScale = maxScale;
 
+            if (spawnQueue.size() >= MAX_PENDING_SPAWNS) continue;
             spawnQueue.add(() -> {
                 World spawnWorld = spawnLoc.getWorld();
                 if (spawnWorld == null || !spawnLoc.getChunk().isLoaded()) return;
@@ -172,7 +211,7 @@ public class SpawnerTickManager {
                     }
                 } else if (data != null && !data.isMythicMob()) {
                     try {
-                        Entity entity = loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                        Entity entity = spawnLoc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
                         applyScale(entity, finalMinScale, finalMaxScale);
                         plugin.trackVanillaSpawn();
                     } catch (Exception e) {
