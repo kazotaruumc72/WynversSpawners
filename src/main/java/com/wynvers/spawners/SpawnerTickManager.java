@@ -7,6 +7,8 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.CreatureSpawner;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -134,11 +136,15 @@ public class SpawnerTickManager {
         Integer pdcMaxRadius = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(), PersistentDataType.INTEGER);
         Integer pdcMinAmount = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(), PersistentDataType.INTEGER);
         Integer pdcMaxAmount = cs.getPersistentDataContainer().get(plugin.getMaxAmountKey(), PersistentDataType.INTEGER);
+        Double pdcMinScale   = cs.getPersistentDataContainer().get(plugin.getMinScaleKey(), PersistentDataType.DOUBLE);
+        Double pdcMaxScale   = cs.getPersistentDataContainer().get(plugin.getMaxScaleKey(), PersistentDataType.DOUBLE);
 
         int minRadius = pdcMinRadius != null ? pdcMinRadius : (data != null ? data.getMinRadius() : 0);
         int maxRadius = pdcMaxRadius != null ? pdcMaxRadius : (data != null ? data.getMaxRadius() : 0);
         int minAmount = pdcMinAmount != null ? pdcMinAmount : (data != null ? data.getMinAmount() : 1);
         int maxAmount = pdcMaxAmount != null ? pdcMaxAmount : (data != null ? data.getMaxAmount() : 1);
+        double minScale = pdcMinScale != null ? pdcMinScale : (data != null ? data.getMinScale() : 1.0);
+        double maxScale = pdcMaxScale != null ? pdcMaxScale : (data != null ? data.getMaxScale() : 1.0);
 
         if (minAmount < 1) minAmount = 1;
         if (maxAmount < minAmount) maxAmount = minAmount;
@@ -149,21 +155,25 @@ public class SpawnerTickManager {
 
         for (int i = 0; i < spawnCount; i++) {
             final Location spawnLoc = getSpawnLocation(loc, minRadius, maxRadius);
+            final double finalMinScale = minScale;
+            final double finalMaxScale = maxScale;
 
             spawnQueue.add(() -> {
                 World spawnWorld = spawnLoc.getWorld();
                 if (spawnWorld == null || !spawnLoc.getChunk().isLoaded()) return;
                 if (mmType != null && !mmType.isEmpty() && plugin.isMythicMobsEnabled()) {
                     try {
-                        io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
-                                .spawnMob(mmType, spawnLoc);
+                        Entity entity = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager()
+                                .spawnMob(mmType, spawnLoc).getEntity().getBukkitEntity();
+                        applyScale(entity, finalMinScale, finalMaxScale);
                         plugin.trackMythicSpawn();
                     } catch (Exception e) {
                         plugin.getLogger().warning("Failed to spawn MythicMob '" + mmType + "': " + e.getMessage());
                     }
                 } else if (data != null && !data.isMythicMob()) {
                     try {
-                        loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                        Entity entity = loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                        applyScale(entity, finalMinScale, finalMaxScale);
                         plugin.trackVanillaSpawn();
                     } catch (Exception e) {
                         plugin.getLogger().warning("Failed to spawn vanilla mob: " + e.getMessage());
@@ -181,6 +191,24 @@ public class SpawnerTickManager {
         double angle    = random.nextDouble() * 2 * Math.PI;
         double distance = Math.sqrt(random.nextDouble()) * radius;
         return center.clone().add(Math.cos(angle) * distance + 0.5, 0, Math.sin(angle) * distance + 0.5);
+    }
+
+    private void applyScale(Entity entity, double minScale, double maxScale) {
+        if (Math.abs(minScale - 1.0) < 1e-9 && Math.abs(maxScale - 1.0) < 1e-9) return;
+        if (!(entity instanceof LivingEntity)) return;
+        double scale = (maxScale > minScale)
+                ? minScale + random.nextDouble() * (maxScale - minScale)
+                : minScale;
+        try {
+            org.bukkit.attribute.Attributable attributable = (org.bukkit.attribute.Attributable) entity;
+            org.bukkit.attribute.Attribute scaleAttr = org.bukkit.attribute.Attribute.valueOf("GENERIC_SCALE");
+            org.bukkit.attribute.AttributeInstance attr = attributable.getAttribute(scaleAttr);
+            if (attr != null) {
+                attr.setBaseValue(scale);
+            }
+        } catch (Exception e) {
+            // GENERIC_SCALE not available on this server version – silently ignore
+        }
     }
 
     private static String locKey(Location loc) {

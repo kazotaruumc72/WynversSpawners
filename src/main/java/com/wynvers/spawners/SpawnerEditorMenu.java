@@ -14,7 +14,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class SpawnerEditorMenu implements Listener {
@@ -28,7 +30,11 @@ public class SpawnerEditorMenu implements Listener {
         SLOT_FIELDS.put(30, new String[]{"max-radius",           "field-max-radius"});
         SLOT_FIELDS.put(32, new String[]{"min-amount",           "field-min-amount"});
         SLOT_FIELDS.put(34, new String[]{"max-amount",           "field-max-amount"});
+        SLOT_FIELDS.put(37, new String[]{"min-scale",            "field-min-scale"});
+        SLOT_FIELDS.put(39, new String[]{"max-scale",            "field-max-scale"});
     }
+
+    private static final Set<String> DOUBLE_FIELDS = new HashSet<>(Arrays.asList("min-scale", "max-scale"));
 
     private final WSpawners plugin;
     private final Map<UUID, String[]> pendingEdits = new HashMap<>();
@@ -66,16 +72,20 @@ public class SpawnerEditorMenu implements Listener {
         buildButton(inv, 30, data, "max-radius",            msg().get("field-max-radius"),              Material.BLUE_DYE);
         buildButton(inv, 32, data, "min-amount",            msg().get("field-min-amount"),              Material.GREEN_DYE);
         buildButton(inv, 34, data, "max-amount",            msg().get("field-max-amount"),              Material.LIME_DYE);
+        buildButton(inv, 37, data, "min-scale",             msg().get("field-min-scale"),               Material.ORANGE_DYE);
+        buildButton(inv, 39, data, "max-scale",             msg().get("field-max-scale"),               Material.RED_DYE);
 
         inv.setItem(49, makeItem(Material.BARRIER, msg().get("editor-close")));
         player.openInventory(inv);
     }
 
     private void buildButton(Inventory inv, int slot, SpawnerData data, String field, String label, Material icon) {
-        int current = getCurrentValue(data, field);
+        String current = DOUBLE_FIELDS.contains(field)
+                ? String.valueOf(getCurrentDoubleValue(data, field))
+                : String.valueOf(getCurrentValue(data, field));
         inv.setItem(slot, makeItem(icon,
                 MessageManager.parseMiniMessage("<yellow>" + label),
-                msg().get("editor-button-value", "value", String.valueOf(current)),
+                msg().get("editor-button-value", "value", current),
                 msg().get("editor-button-click")));
     }
 
@@ -91,6 +101,14 @@ public class SpawnerEditorMenu implements Listener {
         }
     }
 
+    private double getCurrentDoubleValue(SpawnerData data, String field) {
+        switch (field) {
+            case "min-scale":  return data.getMinScale();
+            case "max-scale":  return data.getMaxScale();
+            default:           return 0.0;
+        }
+    }
+
     private void applyValue(SpawnerData data, String field, int value) {
         switch (field) {
             case "delay":                  data.setDelay(value); break;
@@ -99,6 +117,13 @@ public class SpawnerEditorMenu implements Listener {
             case "max-radius":             data.setMaxRadius(value); break;
             case "min-amount":             data.setMinAmount(value); break;
             case "max-amount":             data.setMaxAmount(value); break;
+        }
+    }
+
+    private void applyDoubleValue(SpawnerData data, String field, double value) {
+        switch (field) {
+            case "min-scale":  data.setMinScale(value); break;
+            case "max-scale":  data.setMaxScale(value); break;
         }
     }
 
@@ -142,45 +167,85 @@ public class SpawnerEditorMenu implements Listener {
             return;
         }
 
-        int value;
-        try {
-            value = Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            player.sendMessage(msg().get("editor-invalid-value"));
-            return;
-        }
-        if (value < 0) {
-            player.sendMessage(msg().get("editor-negative-value"));
-            return;
-        }
-
         String spawnerId = info[0];
         String fieldKey  = info[1];
         String label     = info[2];
+        boolean isDouble = DOUBLE_FIELDS.contains(fieldKey);
 
-        SpawnerData data = plugin.getSpawnerConfig().getSpawner(spawnerId);
-        if (data == null) { player.sendMessage(msg().get("editor-spawner-not-found", "id", spawnerId)); return; }
-
-        applyValue(data, fieldKey, value);
-
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            FileConfiguration config = plugin.getConfig();
-            plugin.getSpawnerConfig().saveField(config, spawnerId, fieldKey, value);
-            plugin.saveConfig();
-            plugin.getSpawnerConfig().loadSpawners(plugin.getConfig());
-            SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
-            if (updatedData == null) {
-                plugin.getLogger().severe("Spawner not found after reload: " + spawnerId);
-                player.sendMessage(msg().get("editor-error-reload"));
+        if (isDouble) {
+            double dValue;
+            try {
+                dValue = Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                player.sendMessage(msg().get("editor-invalid-value"));
                 return;
             }
-            player.sendMessage(msg().get("editor-saved",
-                    "label", label,
-                    "value", String.valueOf(value),
-                    "id", spawnerId));
-            plugin.getEditorMenu().open(player, updatedData);
-            plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
-        });
+            if (dValue < 0) {
+                player.sendMessage(msg().get("editor-negative-value"));
+                return;
+            }
+
+            SpawnerData data = plugin.getSpawnerConfig().getSpawner(spawnerId);
+            if (data == null) { player.sendMessage(msg().get("editor-spawner-not-found", "id", spawnerId)); return; }
+
+            applyDoubleValue(data, fieldKey, dValue);
+
+            final double savedValue = dValue;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                FileConfiguration config = plugin.getConfig();
+                plugin.getSpawnerConfig().saveDoubleField(config, spawnerId, fieldKey, savedValue);
+                plugin.saveConfig();
+                plugin.getSpawnerConfig().loadSpawners(plugin.getConfig());
+                SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
+                if (updatedData == null) {
+                    plugin.getLogger().severe("Spawner not found after reload: " + spawnerId);
+                    player.sendMessage(msg().get("editor-error-reload"));
+                    return;
+                }
+                player.sendMessage(msg().get("editor-saved",
+                        "label", label,
+                        "value", String.valueOf(savedValue),
+                        "id", spawnerId));
+                plugin.getEditorMenu().open(player, updatedData);
+                plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
+            });
+        } else {
+            int value;
+            try {
+                value = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                player.sendMessage(msg().get("editor-invalid-value"));
+                return;
+            }
+            if (value < 0) {
+                player.sendMessage(msg().get("editor-negative-value"));
+                return;
+            }
+
+            SpawnerData data = plugin.getSpawnerConfig().getSpawner(spawnerId);
+            if (data == null) { player.sendMessage(msg().get("editor-spawner-not-found", "id", spawnerId)); return; }
+
+            applyValue(data, fieldKey, value);
+
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                FileConfiguration config = plugin.getConfig();
+                plugin.getSpawnerConfig().saveField(config, spawnerId, fieldKey, value);
+                plugin.saveConfig();
+                plugin.getSpawnerConfig().loadSpawners(plugin.getConfig());
+                SpawnerData updatedData = plugin.getSpawnerConfig().getSpawner(spawnerId);
+                if (updatedData == null) {
+                    plugin.getLogger().severe("Spawner not found after reload: " + spawnerId);
+                    player.sendMessage(msg().get("editor-error-reload"));
+                    return;
+                }
+                player.sendMessage(msg().get("editor-saved",
+                        "label", label,
+                        "value", String.valueOf(value),
+                        "id", spawnerId));
+                plugin.getEditorMenu().open(player, updatedData);
+                plugin.setOpenEditorSpawnerId(player.getUniqueId(), spawnerId);
+            });
+        }
     }
 
     private ItemStack makeItem(Material material, String name, String... lore) {

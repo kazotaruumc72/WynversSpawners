@@ -18,11 +18,14 @@ public class SpawnerData {
     private int maxRadius;
     private int minAmount;
     private int maxAmount;
+    private double minScale;
+    private double maxScale;
 
     public SpawnerData(String id, Material material, String displayName, List<String> lore,
                        EntityType entityType, String mythicMobType, int delay,
                        int requiredPlayerRange,
-                       int minRadius, int maxRadius, int minAmount, int maxAmount) {
+                       int minRadius, int maxRadius, int minAmount, int maxAmount,
+                       double minScale, double maxScale) {
         this.id = id;
         this.material = material;
         this.displayName = displayName;
@@ -35,6 +38,8 @@ public class SpawnerData {
         this.maxRadius = maxRadius;
         this.minAmount = minAmount;
         this.maxAmount = maxAmount;
+        this.minScale = minScale;
+        this.maxScale = maxScale;
     }
 
     public String getId() { return id; }
@@ -62,4 +67,10 @@ public class SpawnerData {
 
     public int getMaxAmount() { return maxAmount; }
     public void setMaxAmount(int maxAmount) { this.maxAmount = maxAmount; }
+
+    public double getMinScale() { return minScale; }
+    public void setMinScale(double minScale) { this.minScale = minScale; }
+
+    public double getMaxScale() { return maxScale; }
+    public void setMaxScale(double maxScale) { this.maxScale = maxScale; }
 }

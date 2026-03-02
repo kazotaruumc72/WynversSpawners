@@ -78,13 +78,20 @@ public class SpawnerConfig {
         int maxRadius           = section.getInt("max-radius", 0);
         int minAmount           = section.getInt("min-amount", 0);
         int maxAmount           = section.getInt("max-amount", 0);
+        double minScale         = section.getDouble("min-scale", 1.0);
+        double maxScale         = section.getDouble("max-scale", 1.0);
 
         return new SpawnerData(id, material, displayName, lore, entityType, mythicMobType,
                 delay, requiredPlayerRange,
-                minRadius, maxRadius, minAmount, maxAmount);
+                minRadius, maxRadius, minAmount, maxAmount,
+                minScale, maxScale);
     }
 
     public void saveField(FileConfiguration config, String spawnerId, String field, int value) {
+        config.set("spawners." + spawnerId + "." + field, value);
+    }
+
+    public void saveDoubleField(FileConfiguration config, String spawnerId, String field, double value) {
         config.set("spawners." + spawnerId + "." + field, value);
     }
 

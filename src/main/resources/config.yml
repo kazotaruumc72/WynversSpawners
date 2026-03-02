@@ -15,6 +15,8 @@ spawners:
     max-radius: 0
     min-amount: 1
     max-amount: 1
+    min-scale: 1.0
+    max-scale: 1.0
 
   zombie_spawner:
     material: SPAWNER
@@ -29,6 +31,8 @@ spawners:
     max-radius: 0
     min-amount: 1
     max-amount: 1
+    min-scale: 0.5
+    max-scale: 2.0
 
   skeleton_spawner:
     material: SPAWNER
@@ -43,6 +47,8 @@ spawners:
     max-radius: 0
     min-amount: 1
     max-amount: 1
+    min-scale: 1.0
+    max-scale: 1.0
 
   elephant_spawner:
     material: SPAWNER
@@ -57,3 +63,5 @@ spawners:
     max-radius: 5
     min-amount: 1
     max-amount: 3
+    min-scale: 0.8
+    max-scale: 1.5
