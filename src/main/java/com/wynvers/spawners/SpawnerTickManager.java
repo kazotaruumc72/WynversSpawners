@@ -194,7 +194,7 @@ public class SpawnerTickManager {
     }
 
     private void applyScale(Entity entity, double minScale, double maxScale) {
-        if (minScale == 1.0 && maxScale == 1.0) return;
+        if (Math.abs(minScale - 1.0) < 1e-9 && Math.abs(maxScale - 1.0) < 1e-9) return;
         if (!(entity instanceof LivingEntity)) return;
         double scale = (maxScale > minScale)
                 ? minScale + random.nextDouble() * (maxScale - minScale)
