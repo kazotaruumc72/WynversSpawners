@@ -6,7 +6,8 @@
 
 ## ✨ Features
 
-- **Configurable spawner types** – define any number of spawner types with custom display names, lore, entity type, delay, spawn radius, and spawn amount.
+- **Configurable spawner types** – define any number of spawner types with custom display names, lore, entity type, delay, spawn radius, spawn amount, and entity scale.
+- **Entity scale variation** – set `min-scale` and `max-scale` to randomly vary the size of spawned entities (requires Minecraft 1.20.5+).
 - **MythicMobs support** – set `entity-type: "mm:<MobName>"` to spawn MythicMobs creatures.
 - **Ownership tracking** – every placed spawner is recorded in a SQLite database. Players can only break spawners they placed themselves (unless they have admin permission).
 - **In-game editor GUI** – admins can right-click a managed spawner to open a GUI and edit its properties live.
@@ -60,6 +61,8 @@ spawners:
     max-radius: 0             # Maximum spawn radius from the spawner
     min-amount: 1             # Minimum mobs spawned per cycle
     max-amount: 1             # Maximum mobs spawned per cycle
+    min-scale: 0.5            # Minimum entity scale (1.0 = normal size)
+    max-scale: 2.0            # Maximum entity scale (1.0 = normal size)
 
   # MythicMobs example
   elephant_spawner:
@@ -75,6 +78,8 @@ spawners:
     max-radius: 5
     min-amount: 1
     max-amount: 3
+    min-scale: 0.8
+    max-scale: 1.5
 ```
 
 Display names and lore support [MiniMessage](https://docs.advntr.dev/minimessage/format.html) formatting (e.g. `<red>`, `<bold>`, `<gradient:...>`).

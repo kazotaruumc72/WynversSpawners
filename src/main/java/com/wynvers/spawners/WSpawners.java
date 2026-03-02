@@ -55,6 +55,8 @@ public class WSpawners extends JavaPlugin implements Listener {
     private NamespacedKey maxRadiusKey;
     private NamespacedKey minAmountKey;
     private NamespacedKey maxAmountKey;
+    private NamespacedKey minScaleKey;
+    private NamespacedKey maxScaleKey;
 
     private boolean mythicMobsEnabled = false;
     private final Map<UUID, String> openEditorSpawnerIds = new HashMap<>();
@@ -74,6 +76,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         maxRadiusKey     = new NamespacedKey(this, "max_radius");
         minAmountKey     = new NamespacedKey(this, "min_amount");
         maxAmountKey     = new NamespacedKey(this, "max_amount");
+        minScaleKey      = new NamespacedKey(this, "min_scale");
+        maxScaleKey      = new NamespacedKey(this, "max_scale");
 
         messageManager = new MessageManager(this);
 
@@ -148,6 +152,8 @@ public class WSpawners extends JavaPlugin implements Listener {
     public NamespacedKey getMaxRadiusKey()                     { return maxRadiusKey; }
     public NamespacedKey getMinAmountKey()                     { return minAmountKey; }
     public NamespacedKey getMaxAmountKey()                     { return maxAmountKey; }
+    public NamespacedKey getMinScaleKey()                      { return minScaleKey; }
+    public NamespacedKey getMaxScaleKey()                      { return maxScaleKey; }
     public String getOpenEditorSpawnerId(UUID uuid)            { return openEditorSpawnerIds.get(uuid); }
     public void setOpenEditorSpawnerId(UUID uuid, String id)   { openEditorSpawnerIds.put(uuid, id); }
     public void trackMythicSpawn()                             { mythicSpawns.incrementAndGet(); }
@@ -296,6 +302,8 @@ public class WSpawners extends JavaPlugin implements Listener {
                     spawner.getPersistentDataContainer().set(maxRadiusKey, PersistentDataType.INTEGER, data.getMaxRadius());
                     spawner.getPersistentDataContainer().set(minAmountKey, PersistentDataType.INTEGER, data.getMinAmount());
                     spawner.getPersistentDataContainer().set(maxAmountKey, PersistentDataType.INTEGER, data.getMaxAmount());
+                    spawner.getPersistentDataContainer().set(minScaleKey, PersistentDataType.DOUBLE, data.getMinScale());
+                    spawner.getPersistentDataContainer().set(maxScaleKey, PersistentDataType.DOUBLE, data.getMaxScale());
                     blockMeta.setBlockState(spawner);
                 }
             }
@@ -333,6 +341,8 @@ public class WSpawners extends JavaPlugin implements Listener {
         copyPDCInt(itemSpawner, placedSpawner, maxRadiusKey);
         copyPDCInt(itemSpawner, placedSpawner, minAmountKey);
         copyPDCInt(itemSpawner, placedSpawner, maxAmountKey);
+        copyPDCDouble(itemSpawner, placedSpawner, minScaleKey);
+        copyPDCDouble(itemSpawner, placedSpawner, maxScaleKey);
         placedSpawner.update();
         SpawnerData data = spawnerConfig.getSpawner(spawnerId);
         int delay = data != null ? data.getDelay() : itemSpawner.getDelay();
@@ -430,5 +440,10 @@ public class WSpawners extends JavaPlugin implements Listener {
     private void copyPDCInt(CreatureSpawner src, CreatureSpawner dst, NamespacedKey key) {
         Integer val = src.getPersistentDataContainer().get(key, PersistentDataType.INTEGER);
         if (val != null) dst.getPersistentDataContainer().set(key, PersistentDataType.INTEGER, val);
+    }
+
+    private void copyPDCDouble(CreatureSpawner src, CreatureSpawner dst, NamespacedKey key) {
+        Double val = src.getPersistentDataContainer().get(key, PersistentDataType.DOUBLE);
+        if (val != null) dst.getPersistentDataContainer().set(key, PersistentDataType.DOUBLE, val);
     }
 }
