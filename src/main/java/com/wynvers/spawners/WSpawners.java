@@ -88,6 +88,7 @@ public class WSpawners extends JavaPlugin implements Listener {
         tickManager = new SpawnerTickManager(this);
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
         tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+        tickManager.setMaxNearbyEntities(getConfig().getInt("max-nearby-entities", 0));
 
         database = new SpawnerDatabase(getDataFolder(), getLogger());
 
@@ -166,6 +167,7 @@ public class WSpawners extends JavaPlugin implements Listener {
         messageManager.reload();
         tickManager.setSparkEnabled(getConfig().getBoolean("spark-particles", true));
         tickManager.setMaxSpawnsPerTick(getConfig().getInt("max-spawns-per-tick", 4));
+        tickManager.setMaxNearbyEntities(getConfig().getInt("max-nearby-entities", 0));
     }
 
     // ---- Commands ----

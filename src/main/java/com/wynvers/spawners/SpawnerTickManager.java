@@ -27,13 +27,47 @@ public class SpawnerTickManager {
     private final WSpawners plugin;
     private final Random random = new Random();
 
-    private final Map<String, Integer>  countdowns = new HashMap<>();
-    private final Map<String, Location> locations  = new HashMap<>();
+    private final Map<String, Integer>     countdowns  = new HashMap<>();
+    private final Map<String, Location>    locations   = new HashMap<>();
+    private final Map<String, SpawnParams> paramsCache = new HashMap<>();
     private final Queue<Runnable> spawnQueue = new ArrayDeque<>();
 
     private BukkitTask task;
-    private boolean sparkEnabled = true;
-    private int maxSpawnsPerTick = 4;
+    private boolean sparkEnabled    = true;
+    private int maxSpawnsPerTick    = 4;
+    private int maxNearbyEntities   = 0; // 0 = disabled
+
+    /**
+     * PDC values read once from the block state and cached for the lifetime of
+     * the registration.  Re-populated whenever the spawner is re-registered.
+     */
+    private static final class SpawnParams {
+        final String  spawnerId;
+        final String  mmType;          // nullable
+        final Integer pdcMinRadius;    // nullable → fall back to SpawnerData
+        final Integer pdcMaxRadius;
+        final Integer pdcMinAmount;
+        final Integer pdcMaxAmount;
+        final Double  pdcMinScale;
+        final Double  pdcMaxScale;
+        final int     blockPlayerRange; // cs.getRequiredPlayerRange() fallback
+
+        SpawnParams(String spawnerId, String mmType,
+                    Integer pdcMinRadius, Integer pdcMaxRadius,
+                    Integer pdcMinAmount, Integer pdcMaxAmount,
+                    Double pdcMinScale,   Double pdcMaxScale,
+                    int blockPlayerRange) {
+            this.spawnerId        = spawnerId;
+            this.mmType           = mmType;
+            this.pdcMinRadius     = pdcMinRadius;
+            this.pdcMaxRadius     = pdcMaxRadius;
+            this.pdcMinAmount     = pdcMinAmount;
+            this.pdcMaxAmount     = pdcMaxAmount;
+            this.pdcMinScale      = pdcMinScale;
+            this.pdcMaxScale      = pdcMaxScale;
+            this.blockPlayerRange = blockPlayerRange;
+        }
+    }
 
     public SpawnerTickManager(WSpawners plugin) {
         this.plugin = plugin;
@@ -47,6 +81,7 @@ public class SpawnerTickManager {
         if (task != null) { task.cancel(); task = null; }
         countdowns.clear();
         locations.clear();
+        paramsCache.clear();
         spawnQueue.clear();
     }
 
@@ -54,12 +89,14 @@ public class SpawnerTickManager {
         String key = locKey(loc);
         locations.put(key, loc.clone());
         countdowns.put(key, delayTicks > 0 ? delayTicks : 200);
+        paramsCache.remove(key); // invalidate so params are re-read on next tick
     }
 
     public void unregister(Location loc) {
         String key = locKey(loc);
         locations.remove(key);
         countdowns.remove(key);
+        paramsCache.remove(key);
     }
 
     public boolean isRegistered(Location loc) {
@@ -72,6 +109,10 @@ public class SpawnerTickManager {
 
     public void setMaxSpawnsPerTick(int maxSpawnsPerTick) {
         this.maxSpawnsPerTick = Math.max(1, maxSpawnsPerTick);
+    }
+
+    public void setMaxNearbyEntities(int maxNearbyEntities) {
+        this.maxNearbyEntities = Math.max(0, maxNearbyEntities);
     }
 
     private void tick() {
@@ -95,15 +136,16 @@ public class SpawnerTickManager {
             Block block = world.getBlockAt(loc);
             if (block.getType() != org.bukkit.Material.SPAWNER) { toRemove.add(key); continue; }
 
-            BlockState state = block.getState();
-            if (!(state instanceof CreatureSpawner)) { toRemove.add(key); continue; }
-            CreatureSpawner cs = (CreatureSpawner) state;
+            // Use cached PDC params; populate via block.getState() only on first access.
+            SpawnParams params = paramsCache.get(key);
+            if (params == null) {
+                params = readAndCacheParams(key, block);
+                if (params == null) { toRemove.add(key); continue; }
+            }
 
-            String spawnerId = cs.getPersistentDataContainer()
-                    .get(plugin.getSpawnerIdKey(), PersistentDataType.STRING);
-            SpawnerData data = spawnerId != null ? plugin.getSpawnerConfig().getSpawner(spawnerId) : null;
+            SpawnerData data = plugin.getSpawnerConfig().getSpawner(params.spawnerId);
 
-            int playerRange = data != null ? data.getRequiredPlayerRange() : cs.getRequiredPlayerRange();
+            int playerRange = data != null ? data.getRequiredPlayerRange() : params.blockPlayerRange;
             if (playerRange > 0) {
                 boolean playerNearby = world.getPlayers().stream()
                         .anyMatch(p -> p.getLocation().distanceSquared(loc) <= (double) playerRange * playerRange);
@@ -118,36 +160,69 @@ public class SpawnerTickManager {
             int remaining = entry.getValue() - TICK_INTERVAL;
             if (remaining > 0) { entry.setValue(remaining); continue; }
 
-            spawnMobs(cs, loc, data);
+            spawnMobs(loc, params, data);
 
-            int delay = data != null ? data.getDelay() : cs.getDelay();
+            int delay = data != null ? data.getDelay() : 200;
             if (delay <= 0) delay = 200;
             entry.setValue(delay);
         }
 
-        toRemove.forEach(k -> { countdowns.remove(k); locations.remove(k); });
+        toRemove.forEach(k -> { countdowns.remove(k); locations.remove(k); paramsCache.remove(k); });
     }
 
-    private void spawnMobs(CreatureSpawner cs, Location loc, SpawnerData data) {
-        String mmType = cs.getPersistentDataContainer()
-                .get(plugin.getMythicMobTypeKey(), PersistentDataType.STRING);
+    /**
+     * Reads all PDC values from the block state once and stores them in
+     * {@link #paramsCache}.  Returns {@code null} if the block is not a managed
+     * spawner (no {@code spawner_id} PDC key).
+     */
+    private SpawnParams readAndCacheParams(String key, Block block) {
+        BlockState state = block.getState();
+        if (!(state instanceof CreatureSpawner)) return null;
+        CreatureSpawner cs = (CreatureSpawner) state;
 
-        Integer pdcMinRadius = cs.getPersistentDataContainer().get(plugin.getMinRadiusKey(), PersistentDataType.INTEGER);
-        Integer pdcMaxRadius = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(), PersistentDataType.INTEGER);
-        Integer pdcMinAmount = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(), PersistentDataType.INTEGER);
-        Integer pdcMaxAmount = cs.getPersistentDataContainer().get(plugin.getMaxAmountKey(), PersistentDataType.INTEGER);
-        Double pdcMinScale   = cs.getPersistentDataContainer().get(plugin.getMinScaleKey(), PersistentDataType.DOUBLE);
-        Double pdcMaxScale   = cs.getPersistentDataContainer().get(plugin.getMaxScaleKey(), PersistentDataType.DOUBLE);
+        String spawnerId = cs.getPersistentDataContainer()
+                .get(plugin.getSpawnerIdKey(), PersistentDataType.STRING);
+        if (spawnerId == null) return null;
 
-        int minRadius = pdcMinRadius != null ? pdcMinRadius : (data != null ? data.getMinRadius() : 0);
-        int maxRadius = pdcMaxRadius != null ? pdcMaxRadius : (data != null ? data.getMaxRadius() : 0);
-        int minAmount = pdcMinAmount != null ? pdcMinAmount : (data != null ? data.getMinAmount() : 1);
-        int maxAmount = pdcMaxAmount != null ? pdcMaxAmount : (data != null ? data.getMaxAmount() : 1);
-        double minScale = pdcMinScale != null ? pdcMinScale : (data != null ? data.getMinScale() : 1.0);
-        double maxScale = pdcMaxScale != null ? pdcMaxScale : (data != null ? data.getMaxScale() : 1.0);
+        String  mmType    = cs.getPersistentDataContainer().get(plugin.getMythicMobTypeKey(), PersistentDataType.STRING);
+        Integer minRadius = cs.getPersistentDataContainer().get(plugin.getMinRadiusKey(),      PersistentDataType.INTEGER);
+        Integer maxRadius = cs.getPersistentDataContainer().get(plugin.getMaxRadiusKey(),      PersistentDataType.INTEGER);
+        Integer minAmount = cs.getPersistentDataContainer().get(plugin.getMinAmountKey(),      PersistentDataType.INTEGER);
+        Integer maxAmount = cs.getPersistentDataContainer().get(plugin.getMaxAmountKey(),      PersistentDataType.INTEGER);
+        Double  minScale  = cs.getPersistentDataContainer().get(plugin.getMinScaleKey(),       PersistentDataType.DOUBLE);
+        Double  maxScale  = cs.getPersistentDataContainer().get(plugin.getMaxScaleKey(),       PersistentDataType.DOUBLE);
+
+        SpawnParams params = new SpawnParams(
+                spawnerId, mmType,
+                minRadius, maxRadius,
+                minAmount, maxAmount,
+                minScale,  maxScale,
+                cs.getRequiredPlayerRange()
+        );
+        paramsCache.put(key, params);
+        return params;
+    }
+
+    private void spawnMobs(Location loc, SpawnParams params, SpawnerData data) {
+        String mmType = params.mmType;
+
+        int minRadius = params.pdcMinRadius != null ? params.pdcMinRadius : (data != null ? data.getMinRadius() : 0);
+        int maxRadius = params.pdcMaxRadius != null ? params.pdcMaxRadius : (data != null ? data.getMaxRadius() : 0);
+        int minAmount = params.pdcMinAmount != null ? params.pdcMinAmount : (data != null ? data.getMinAmount() : 1);
+        int maxAmount = params.pdcMaxAmount != null ? params.pdcMaxAmount : (data != null ? data.getMaxAmount() : 1);
+        double minScale = params.pdcMinScale != null ? params.pdcMinScale : (data != null ? data.getMinScale() : 1.0);
+        double maxScale = params.pdcMaxScale != null ? params.pdcMaxScale : (data != null ? data.getMaxScale() : 1.0);
 
         if (minAmount < 1) minAmount = 1;
         if (maxAmount < minAmount) maxAmount = minAmount;
+
+        // Anti-lag: skip spawn when too many entities already crowd the area
+        if (maxNearbyEntities > 0) {
+            double checkRadius = Math.max(maxRadius, 8);
+            int nearby = loc.getWorld().getNearbyEntities(loc, checkRadius, checkRadius, checkRadius,
+                    e -> e instanceof LivingEntity).size();
+            if (nearby >= maxNearbyEntities) return;
+        }
 
         int spawnCount = (maxAmount > minAmount)
                 ? minAmount + random.nextInt(maxAmount - minAmount + 1)
@@ -172,7 +247,7 @@ public class SpawnerTickManager {
                     }
                 } else if (data != null && !data.isMythicMob()) {
                     try {
-                        Entity entity = loc.getWorld().spawnEntity(spawnLoc, data.getEntityType());
+                        Entity entity = spawnWorld.spawnEntity(spawnLoc, data.getEntityType());
                         applyScale(entity, finalMinScale, finalMaxScale);
                         plugin.trackVanillaSpawn();
                     } catch (Exception e) {
